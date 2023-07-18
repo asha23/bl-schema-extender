@@ -1,0 +1,16 @@
+{
+    "name": "ash.whiting/schema-extender",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "AshWhiting\\SchemaExtender\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ash Whiting",
+            "email": "ash_whiting@hotmail.com"
+        }
+    ],
+    "require": {}
+}
