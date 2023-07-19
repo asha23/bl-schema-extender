@@ -1,6 +1,7 @@
 {
     "name": "asha23/schema-extender",
-    "type": "project",
+    "type": "wordpress-plugin",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "AshWhiting\\SchemaExtender\\": "src/"
