@@ -1,11 +1,15 @@
 <?php
 /**
-* Plugin Name: Yoast Schema Extender - Product with reviews
+* Plugin Name: BrightLocal - Schema Extender - Product with reviews
 * Plugin URI: https://brightlocal.com
 * Description: Extend Yoast Schema.org data with product type and incorporate product reviews if they are on the page
-* Version: 1.0.3
+* Version: 1.0.4
 * Author: Ash Whiting for BrightLocal
 * Author URI: https://brightlocal.com
+* Text Domain: bl-schema-extender
+* GitHub Plugin URI: https://github.com/asha23/bl-schema-extender
+* Primary Branch: main
+* Release Asset: true
 **/
 
 // Exit if accessed directly
