@@ -8,7 +8,7 @@
 * Author URI: https://brightlocal.com
 * Text Domain: bl-schema-extender
 * GitHub Plugin URI: https://github.com/asha23/bl-schema-extender
-* Primary Branch: main
+* Primary Branch: master
 * Release Asset: true
 **/
 
