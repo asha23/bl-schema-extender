@@ -1,0 +1,6 @@
+{
+  "name": "asha23/bl-schema-extender",
+  "description": "Extends schema markup.",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later"
+}
