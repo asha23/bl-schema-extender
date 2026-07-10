@@ -311,18 +311,34 @@ class BL_EntityMap_Store {
 		return $match;
 	}
 
-	/** Normalise a URL for comparison (scheme-agnostic host+path, trailing slash). */
+	/**
+	 * Normalise a URL to a host-agnostic path for comparison.
+	 *
+	 * Per-page matching compares the PATH only, never the host, so an entity
+	 * authored with a production URL (https://www.brightlocal.com/learn/x/) still
+	 * matches the same page on staging or local (https://site.test/learn/x/).
+	 * Accepts either a full URL or a bare path ("/learn/x/").
+	 */
 	public static function normalise_url( $url ) {
 		if ( ! $url ) {
 			return '';
 		}
 		$parts = wp_parse_url( $url );
-		if ( empty( $parts['host'] ) ) {
-			return trailingslashit( $url );
+		$path  = isset( $parts['path'] ) ? $parts['path'] : '';
+		if ( $path === '' && empty( $parts['host'] ) ) {
+			$path = $url; // bare string with no scheme/host — treat as a path
 		}
-		$host = strtolower( $parts['host'] );
-		$path = isset( $parts['path'] ) ? $parts['path'] : '/';
-		return $host . trailingslashit( $path );
+		return trailingslashit( '/' . ltrim( $path, '/' ) );
+	}
+
+	/**
+	 * Canonical base URL used for schema @id references. Defaults to this site's
+	 * URL (so it auto-adapts to any server); can be overridden in Settings to pin
+	 * a canonical domain (e.g. production) across environments.
+	 */
+	public static function base_url() {
+		$base = get_option( 'bl_em_base_url', '' );
+		return untrailingslashit( $base !== '' ? $base : home_url() );
 	}
 
 	/**

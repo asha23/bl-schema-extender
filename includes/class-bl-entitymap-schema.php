@@ -30,7 +30,7 @@ class BL_EntityMap_Schema {
 
 	/** Base for @id fragments, e.g. https://site/entitymap.json#e_003 */
 	private function id_base() {
-		return trailingslashit( home_url() ) . 'entitymap.json#';
+		return BL_EntityMap_Store::base_url() . '/entitymap.json#';
 	}
 
 	/* ---------------------------------------------------------------------
