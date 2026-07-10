@@ -93,7 +93,17 @@ class BL_EntityMap_Generator {
 	/** Rebuild the cache and (re)write the static file. */
 	public function regenerate() {
 		delete_transient( self::CACHE_KEY );
-		$json = $this->get_json( true );
+
+		$entities = BL_EntityMap_Store::get_entities( true );
+		$json     = $this->get_json( true );
+
+		// Safety: never overwrite an existing map with an empty one. This keeps a
+		// seed file (which the importer reads) intact while the database is still
+		// empty — e.g. on first activation before Tools -> Import has been run.
+		if ( empty( $entities ) ) {
+			return;
+		}
+
 		$this->write_static_file( $json );
 	}
 
