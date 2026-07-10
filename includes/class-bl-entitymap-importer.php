@@ -181,4 +181,97 @@ class BL_EntityMap_Importer {
 		}
 		return $out;
 	}
+
+	/**
+	 * Validate a decoded document WITHOUT touching the database (dry run).
+	 *
+	 * @param mixed $doc  Decoded JSON (or null if it failed to parse).
+	 * @return array  [ 'errors' => [], 'warnings' => [], 'stats' => [] ]
+	 */
+	public static function validate_document( $doc ) {
+		$errors   = array();
+		$warnings = array();
+		$stats    = array( 'entities' => 0, 'chunks' => 0, 'relations' => 0 );
+
+		if ( ! is_array( $doc ) ) {
+			$errors[] = 'File is not valid JSON, or is not a JSON object.';
+			return compact( 'errors', 'warnings', 'stats' );
+		}
+		if ( empty( $doc['entities'] ) || ! is_array( $doc['entities'] ) ) {
+			$errors[] = 'Document has no "entities" array.';
+			return compact( 'errors', 'warnings', 'stats' );
+		}
+
+		$known_types      = BL_EntityMap_Store::entity_types();
+		$known_predicates = BL_EntityMap_Store::predicates();
+
+		$ids       = array();
+		$chunk_ids = array();
+
+		// First pass: entities, required fields, ids, chunks.
+		foreach ( $doc['entities'] as $i => $e ) {
+			$label = ! empty( $e['entityId'] ) ? $e['entityId'] : '#' . $i;
+
+			foreach ( array( 'entityId', '@type', 'name', 'description' ) as $req ) {
+				if ( empty( $e[ $req ] ) ) {
+					$errors[] = "Entity $label is missing required field \"$req\".";
+				}
+			}
+
+			if ( ! empty( $e['entityId'] ) ) {
+				if ( isset( $ids[ $e['entityId'] ] ) ) {
+					$errors[] = "Duplicate entityId \"{$e['entityId']}\".";
+				}
+				$ids[ $e['entityId'] ] = true;
+			}
+
+			if ( ! empty( $e['@type'] ) && ! in_array( $e['@type'], $known_types, true ) ) {
+				$warnings[] = "Entity $label uses an unrecognised @type \"{$e['@type']}\".";
+			}
+
+			if ( ! empty( $e['sameAs'] ) && ! filter_var( $e['sameAs'], FILTER_VALIDATE_URL ) ) {
+				$warnings[] = "Entity $label has a sameAs that is not a valid URL.";
+			}
+
+			if ( ! empty( $e['hasChunks'] ) && is_array( $e['hasChunks'] ) ) {
+				foreach ( $e['hasChunks'] as $c ) {
+					$stats['chunks']++;
+					if ( empty( $c['text'] ) ) {
+						$warnings[] = "A chunk in entity $label has no text.";
+					}
+					if ( ! empty( $c['chunkId'] ) ) {
+						if ( isset( $chunk_ids[ $c['chunkId'] ] ) ) {
+							$errors[] = "Duplicate chunkId \"{$c['chunkId']}\".";
+						}
+						$chunk_ids[ $c['chunkId'] ] = true;
+					}
+				}
+			}
+		}
+
+		// Second pass: relation integrity (needs the full id set).
+		foreach ( $doc['entities'] as $e ) {
+			$label = ! empty( $e['entityId'] ) ? $e['entityId'] : '?';
+			if ( empty( $e['relations'] ) || ! is_array( $e['relations'] ) ) {
+				continue;
+			}
+			foreach ( $e['relations'] as $r ) {
+				$stats['relations']++;
+				if ( empty( $r['predicate'] ) || empty( $r['targetId'] ) ) {
+					$warnings[] = "Entity $label has an incomplete relation (missing predicate or target).";
+					continue;
+				}
+				if ( ! isset( $ids[ $r['targetId'] ] ) ) {
+					$errors[] = "Entity $label has a relation to a missing entity \"{$r['targetId']}\".";
+				}
+				if ( ! in_array( $r['predicate'], $known_predicates, true ) ) {
+					$warnings[] = "Entity $label uses an unrecognised predicate \"{$r['predicate']}\".";
+				}
+			}
+		}
+
+		$stats['entities'] = count( $doc['entities'] );
+
+		return compact( 'errors', 'warnings', 'stats' );
+	}
 }

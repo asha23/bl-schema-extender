@@ -137,13 +137,106 @@ class BL_EntityMap_Admin {
 			$this->notice( $ok ? 'success' : 'warning', $ok
 				? 'Regenerated. Static /entitymap.json written to the webroot.'
 				: 'Regenerated cache. Static file not writable — serving /entitymap.json dynamically instead.' );
+		} elseif ( $tool === 'verify' || $tool === 'verify_import' ) {
+			$this->handle_upload( $tool, $generator );
 		}
+	}
+
+	/**
+	 * Handle an uploaded JSON file: validate (dry run), and import only when
+	 * "verify & import" was chosen and there are zero errors.
+	 */
+	private function handle_upload( $tool, $generator ) {
+		if ( empty( $_FILES['bl_em_json']['name'] ) || ! isset( $_FILES['bl_em_json']['tmp_name'] ) ) {
+			$this->notice( 'error', 'No file was uploaded.' );
+			return;
+		}
+		if ( (int) $_FILES['bl_em_json']['error'] !== UPLOAD_ERR_OK || ! is_uploaded_file( $_FILES['bl_em_json']['tmp_name'] ) ) {
+			$this->notice( 'error', 'Upload failed. Try a smaller file or check server upload limits.' );
+			return;
+		}
+
+		$name = sanitize_file_name( $_FILES['bl_em_json']['name'] );
+		if ( strtolower( pathinfo( $name, PATHINFO_EXTENSION ) ) !== 'json' ) {
+			$this->notice( 'error', 'Please upload a .json file.' );
+			return;
+		}
+
+		$raw    = file_get_contents( $_FILES['bl_em_json']['tmp_name'] );
+		$doc    = json_decode( $raw, true );
+		$report = BL_EntityMap_Importer::validate_document( $doc );
+
+		$report['tool']     = $tool;
+		$report['filename'] = $name;
+		$report['imported'] = null;
+
+		if ( $tool === 'verify_import' ) {
+			if ( empty( $report['errors'] ) ) {
+				$result = BL_EntityMap_Importer::import_array( $doc );
+				$generator->regenerate();
+				$report['imported'] = $result;
+			} else {
+				$report['blocked'] = true;
+			}
+		}
+
+		set_transient( 'bl_em_verify_' . get_current_user_id(), $report, 5 * MINUTE_IN_SECONDS );
 	}
 
 	private function notice( $type, $msg ) {
 		add_action( 'admin_notices', function () use ( $type, $msg ) {
 			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', esc_attr( $type ), esc_html( $msg ) );
 		} );
+	}
+
+	/** Render the result of the most recent upload verification, if any. */
+	private function render_verify_report() {
+		$key    = 'bl_em_verify_' . get_current_user_id();
+		$report = get_transient( $key );
+		if ( ! $report ) {
+			return;
+		}
+		delete_transient( $key );
+
+		$errors   = $report['errors'];
+		$warnings = $report['warnings'];
+		$stats    = $report['stats'];
+		$ok       = empty( $errors );
+		$border   = $ok ? '#008a20' : '#b32d2e';
+		?>
+		<div style="border-left:4px solid <?php echo esc_attr( $border ); ?>;background:#fff;padding:12px 16px;margin:0 0 1.5em;max-width:900px;box-shadow:0 1px 1px rgba(0,0,0,.04);">
+			<p style="margin:0 0 .5em;">
+				<strong><?php echo esc_html( $report['filename'] ); ?></strong>
+				&mdash; <?php echo (int) $stats['entities']; ?> entities, <?php echo (int) $stats['chunks']; ?> chunks, <?php echo (int) $stats['relations']; ?> relations.
+			</p>
+
+			<?php if ( ! empty( $report['imported'] ) ) : ?>
+				<p style="color:#008a20;font-weight:600;margin:.25em 0;">✓ Imported: <?php echo (int) $report['imported']['created']; ?> created, <?php echo (int) $report['imported']['updated']; ?> updated. /entitymap.json regenerated.</p>
+			<?php elseif ( ! empty( $report['blocked'] ) ) : ?>
+				<p style="color:#b32d2e;font-weight:600;margin:.25em 0;">Not imported — fix the errors below and try again.</p>
+			<?php elseif ( $report['tool'] === 'verify' && $ok ) : ?>
+				<p style="color:#008a20;font-weight:600;margin:.25em 0;">✓ Looks valid. Use “Verify &amp; import” to load it.</p>
+			<?php endif; ?>
+
+			<?php if ( $errors ) : ?>
+				<p style="color:#b32d2e;font-weight:600;margin:.75em 0 .25em;">Errors (<?php echo count( $errors ); ?>)</p>
+				<ul style="margin:0 0 .5em 1.2em;list-style:disc;color:#b32d2e;">
+					<?php foreach ( $errors as $e ) : ?><li><?php echo esc_html( $e ); ?></li><?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+
+			<?php if ( $warnings ) : ?>
+				<p style="color:#b26200;font-weight:600;margin:.75em 0 .25em;">Warnings (<?php echo count( $warnings ); ?>)</p>
+				<ul style="margin:0 0 .5em 1.2em;list-style:disc;color:#b26200;">
+					<?php foreach ( $warnings as $w ) : ?><li><?php echo esc_html( $w ); ?></li><?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+
+			<?php if ( ! $errors && ! $warnings ) : ?>
+				<p style="color:#008a20;margin:.25em 0;">No issues found.</p>
+			<?php endif; ?>
+		</div>
+		<?php
 	}
 
 	public function render_tools() {
@@ -173,6 +266,16 @@ class BL_EntityMap_Admin {
 				<button class="button button-primary" name="bl_em_tool" value="regenerate">Regenerate now</button>
 				<button class="button" name="bl_em_tool" value="import" onclick="return confirm('Import from the entitymap.json in the webroot? Existing entities with matching IDs will be updated.');">Import from entitymap.json</button>
 			</form>
+
+			<h2>Upload &amp; verify a JSON file</h2>
+			<p class="description">Check a new EntityMap file for problems before it touches the database. “Verify &amp; import” only writes if there are zero errors.</p>
+			<form method="post" enctype="multipart/form-data" style="margin:1em 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+				<?php wp_nonce_field( 'bl_em_tool', 'bl_em_tool_nonce' ); ?>
+				<input type="file" name="bl_em_json" accept="application/json,.json" required>
+				<button class="button" name="bl_em_tool" value="verify">Verify only</button>
+				<button class="button button-primary" name="bl_em_tool" value="verify_import" onclick="return confirm('Verify and, if clean, import this file? Entities with matching IDs will be updated.');">Verify &amp; import</button>
+			</form>
+			<?php $this->render_verify_report(); ?>
 
 			<h2>Validation</h2>
 			<table class="widefat striped" style="max-width:900px;">
