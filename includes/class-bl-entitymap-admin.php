@@ -162,12 +162,30 @@ class BL_EntityMap_Admin {
 			return;
 		}
 
-		$raw    = file_get_contents( $_FILES['bl_em_json']['tmp_name'] );
+		// Persist the upload into a dedicated folder in uploads (never the Media
+		// Library, so it is not offloaded to the cloud).
+		$dir = self::storage_dir();
+		if ( is_wp_error( $dir ) ) {
+			$this->notice( 'error', $dir->get_error_message() );
+			return;
+		}
+
+		$filename = wp_unique_filename( $dir, $name );
+		$dest     = trailingslashit( $dir ) . $filename;
+
+		if ( ! move_uploaded_file( $_FILES['bl_em_json']['tmp_name'], $dest ) ) {
+			$this->notice( 'error', 'Could not save the uploaded file to ' . esc_html( $dir ) . '.' );
+			return;
+		}
+		@chmod( $dest, defined( 'FS_CHMOD_FILE' ) ? FS_CHMOD_FILE : 0644 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+
+		$raw    = file_get_contents( $dest );
 		$doc    = json_decode( $raw, true );
 		$report = BL_EntityMap_Importer::validate_document( $doc );
 
 		$report['tool']     = $tool;
 		$report['filename'] = $name;
+		$report['stored']   = self::storage_relpath( $dest );
 		$report['imported'] = null;
 
 		if ( $tool === 'verify_import' ) {
@@ -187,6 +205,44 @@ class BL_EntityMap_Admin {
 		add_action( 'admin_notices', function () use ( $type, $msg ) {
 			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', esc_attr( $type ), esc_html( $msg ) );
 		} );
+	}
+
+	/**
+	 * Absolute path to the dedicated uploads folder for EntityMap files.
+	 * Kept out of the Media Library so cloud/S3 offload never touches it.
+	 *
+	 * @return string|WP_Error
+	 */
+	public static function storage_dir() {
+		$u = wp_upload_dir();
+		if ( ! empty( $u['error'] ) ) {
+			return new WP_Error( 'uploads', 'Uploads directory unavailable: ' . $u['error'] );
+		}
+
+		$dir = trailingslashit( $u['basedir'] ) . 'bl-entitymap';
+
+		if ( ! is_dir( $dir ) ) {
+			if ( ! wp_mkdir_p( $dir ) ) {
+				return new WP_Error( 'mkdir', 'Could not create ' . $dir );
+			}
+			// Block directory listing / casual browsing.
+			$index = trailingslashit( $dir ) . 'index.html';
+			if ( ! file_exists( $index ) ) {
+				@file_put_contents( $index, '' ); // phpcs:ignore
+			}
+		}
+
+		return $dir;
+	}
+
+	/** Display path of an uploads-relative file, e.g. uploads/bl-entitymap/foo.json. */
+	public static function storage_relpath( $abs ) {
+		$u    = wp_upload_dir();
+		$base = isset( $u['basedir'] ) ? $u['basedir'] : '';
+		if ( $base && strpos( $abs, $base ) === 0 ) {
+			return 'uploads' . substr( $abs, strlen( $base ) );
+		}
+		return $abs;
 	}
 
 	/** Render the result of the most recent upload verification, if any. */
@@ -209,6 +265,9 @@ class BL_EntityMap_Admin {
 				<strong><?php echo esc_html( $report['filename'] ); ?></strong>
 				&mdash; <?php echo (int) $stats['entities']; ?> entities, <?php echo (int) $stats['chunks']; ?> chunks, <?php echo (int) $stats['relations']; ?> relations.
 			</p>
+			<?php if ( ! empty( $report['stored'] ) ) : ?>
+				<p style="margin:0 0 .5em;color:#555;">Saved to <code><?php echo esc_html( $report['stored'] ); ?></code></p>
+			<?php endif; ?>
 
 			<?php if ( ! empty( $report['imported'] ) ) : ?>
 				<p style="color:#008a20;font-weight:600;margin:.25em 0;">✓ Imported: <?php echo (int) $report['imported']['created']; ?> created, <?php echo (int) $report['imported']['updated']; ?> updated. /entitymap.json regenerated.</p>
