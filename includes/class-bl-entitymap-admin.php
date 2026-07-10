@@ -40,6 +40,7 @@ class BL_EntityMap_Admin {
 	public function menu() {
 		add_submenu_page( self::PARENT, 'EntityMap Settings', 'Settings', 'manage_options', 'bl-em-settings', array( $this, 'render_settings' ) );
 		add_submenu_page( self::PARENT, 'EntityMap Tools', 'Tools', 'manage_options', 'bl-em-tools', array( $this, 'render_tools' ) );
+		add_submenu_page( self::PARENT, 'EntityMap Help & Docs', 'Help & Docs', 'edit_posts', 'bl-em-help', array( $this, 'render_help' ) );
 	}
 
 	/* ---------------------------------------------------------------------
@@ -298,6 +299,105 @@ class BL_EntityMap_Admin {
 
 			<h2 style="margin-top:2em;">Generated entitymap.json</h2>
 			<textarea readonly class="widefat code" rows="18" style="font-family:monospace;font-size:12px;"><?php echo esc_textarea( $json ); ?></textarea>
+		</div>
+		<?php
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Help & documentation.
+	 * ------------------------------------------------------------------- */
+
+	public function render_help() {
+		$home     = esc_html( home_url( '/entitymap.json' ) );
+		$devtools = <<<'JS'
+(() => {
+  const blocks = [...document.querySelectorAll('script[type="application/ld+json"]')]
+    .map(s => { try { return JSON.parse(s.textContent); } catch { return null; } })
+    .filter(Boolean);
+  const graph = blocks.flatMap(b => b['@graph'] || [b]);
+  const org = graph.find(n => [].concat(n['@type']).includes('Organization'));
+  console.table(graph.map(n => ({ type: [].concat(n['@type']).join('/'), name: n.name || '' })));
+  if (org) console.log('knowsAbout:', (org.knowsAbout||[]).length, ' makesOffer:', (org.makesOffer||[]).length);
+})();
+JS;
+		?>
+		<div class="wrap" style="max-width:900px;">
+			<h1>EntityMap — How to use this plugin</h1>
+			<p style="font-size:14px;color:#555;">A plain-English guide for the SEO team. No code required.</p>
+
+			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
+				<h2>What this plugin does</h2>
+				<p>It maintains one list of the <strong>things BrightLocal is about</strong> — our products, services, key concepts, and research — and publishes that in two places automatically:</p>
+				<ol>
+					<li><strong>An EntityMap file</strong> at <code><?php echo $home; ?></code> — a machine-readable index for <strong>AI tools</strong> (ChatGPT, Claude, etc.) so they understand and cite us accurately.</li>
+					<li><strong>Structured data (Schema.org)</strong> added to Yoast on every page — this is what <strong>Google and other search engines</strong> read for rich results and knowledge panels.</li>
+				</ol>
+				<p style="margin-bottom:0;">You edit the list <em>once</em>, here in wp-admin. Both outputs update on their own. You never edit a file by hand.</p>
+			</div>
+
+			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
+				<h2>Key words (glossary)</h2>
+				<table class="widefat striped">
+					<tbody>
+						<tr><td style="width:170px;"><strong>Entity</strong></td><td>One "thing" we're describing — a product, service, concept, or research report. Each lives under <strong>EntityMap &rarr; All Entities</strong>.</td></tr>
+						<tr><td><strong>Type</strong></td><td>What kind of thing it is: Organization, Service, Platform, Concept, ProprietaryTerm (our own named things), Metric, etc.</td></tr>
+						<tr><td><strong>Evidence chunk</strong></td><td>A short quote (1&ndash;5 sentences) from our site that backs up the entity, with a link to the source page.</td></tr>
+						<tr><td><strong>Relation</strong></td><td>A link between two entities, e.g. BrightLocal <em>OFFERS</em> Citation Builder.</td></tr>
+						<tr><td><strong>sameAs</strong></td><td>A link to the same thing on an authoritative site (usually Wikidata). Only add one you've verified points to the right thing.</td></tr>
+						<tr><td><strong>knowsAbout / makesOffer</strong></td><td>Automatic Google output: the topics we're expert in, and the products/services we offer.</td></tr>
+					</tbody>
+				</table>
+			</div>
+
+			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
+				<h2>Everyday tasks</h2>
+
+				<h3>Edit an existing entity</h3>
+				<ol>
+					<li>Go to <strong>EntityMap &rarr; All Entities</strong> and click one.</li>
+					<li><strong>Title</strong> = the name. <strong>Body</strong> = the description (one clear sentence or two).</li>
+					<li><strong>Entity Details</strong> (right side): the Type, an optional verified <em>sameAs</em> link, and <em>Attach to page URL</em> — the page this entity is "about" (its schema is added to that page).</li>
+					<li><strong>Evidence Chunks</strong>: add quotes from our pages with their source links.</li>
+					<li><strong>Relations</strong>: connect it to other entities (pick a predicate + the target entity).</li>
+					<li>Click <strong>Update</strong>. The EntityMap file and Google schema refresh automatically.</li>
+				</ol>
+
+				<h3>Add a new entity</h3>
+				<p>Same as above, via <strong>EntityMap &rarr; Add New</strong>. It gets an ID automatically on first save.</p>
+
+				<h3>Upload a whole new map (bulk)</h3>
+				<ol>
+					<li>Go to <strong>EntityMap &rarr; Tools &rarr; Upload &amp; verify a JSON file</strong>.</li>
+					<li><strong>Verify only</strong> checks the file and reports problems <em>without changing anything</em>.</li>
+					<li><strong>Verify &amp; import</strong> loads it — but only if there are <strong>zero errors</strong> (warnings are OK).</li>
+				</ol>
+				<p style="background:#fff8e5;border-left:4px solid #dba617;padding:10px 14px;">
+					<strong>Important:</strong> an upload is treated as the <em>complete</em> map. Any existing entity that isn't in the uploaded file is moved to <strong>Trash</strong> (recoverable). So always upload the <em>whole</em> map, not a partial list. Uploaded files are stored privately in <code>uploads/bl-entitymap/</code> and are never added to the Media Library.
+				</p>
+			</div>
+
+			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
+				<h2>Settings (one-time)</h2>
+				<p>Under <strong>EntityMap &rarr; Settings</strong>:</p>
+				<ul style="list-style:disc;margin-left:1.4em;">
+					<li><strong>Publisher</strong> details and the spec fields — usually left as-is.</li>
+					<li><strong>Canonical base URL</strong> — leave blank; it auto-uses the current site. Only set it to force a specific domain in the AI identifiers.</li>
+					<li><strong>Output toggles</strong> — turn the EntityMap file, the Organization schema, and per-page schema on/off.</li>
+				</ul>
+			</div>
+
+			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
+				<h2>Check it's working</h2>
+				<p><strong>The AI file:</strong> open <code><?php echo $home; ?></code> in a browser — you should see all the entities.</p>
+				<p><strong>Google schema:</strong> open any page, press <kbd>F12</kbd> &rarr; <strong>Console</strong>, paste this and press Enter:</p>
+				<textarea readonly class="widefat code" rows="9" style="font-family:monospace;font-size:12px;" onclick="this.select()"><?php echo esc_textarea( $devtools ); ?></textarea>
+				<p>You'll get a table of the schema on that page, plus the <em>knowsAbout</em> and <em>makesOffer</em> counts. To formally validate, paste a page's structured data into <a href="https://validator.schema.org/" target="_blank" rel="noopener">validator.schema.org</a> or <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">Google's Rich Results Test</a> (use their "Code" box for staging sites that aren't publicly reachable).</p>
+			</div>
+
+			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
+				<h2>Requirement for Google schema</h2>
+				<p style="margin-bottom:0;">The Organization schema only appears when <strong>Yoast SEO</strong> is active and, under <em>Yoast &rarr; Settings &rarr; Site representation</em>, the site represents an <strong>Organization</strong> with a <strong>name and a logo</strong> set. Without those, Google's Organization block (and our enrichment) won't render. The <strong>Tools</strong> page flags this automatically.</p>
+			</div>
 		</div>
 		<?php
 	}
