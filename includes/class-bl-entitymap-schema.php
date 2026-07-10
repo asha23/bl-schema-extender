@@ -20,6 +20,13 @@ class BL_EntityMap_Schema {
 		if ( is_admin() ) {
 			return;
 		}
+
+		// Master switch: EntityMap data is NOT added to Yoast/Google schema unless
+		// this is explicitly turned on in Settings. Off by default.
+		if ( get_option( 'bl_em_enable_schema', '0' ) !== '1' ) {
+			return;
+		}
+
 		if ( get_option( 'bl_em_enable_org', '1' ) === '1' ) {
 			add_filter( 'wpseo_schema_organization', array( $this, 'enrich_organization' ), 11, 1 );
 		}

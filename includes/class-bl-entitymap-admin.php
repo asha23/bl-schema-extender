@@ -26,6 +26,7 @@ class BL_EntityMap_Admin {
 		'bl_em_verification'     => 'text',
 		'bl_em_profile'          => 'text',
 		'bl_em_enable_json'      => 'bool',
+		'bl_em_enable_schema'    => 'bool',
 		'bl_em_enable_org'       => 'bool',
 		'bl_em_enable_perpage'   => 'bool',
 	);
@@ -101,11 +102,18 @@ class BL_EntityMap_Admin {
 
 				<h2 class="title">Output toggles</h2>
 				<table class="form-table" role="presentation">
-					<tr><th scope="row">Serve /entitymap.json</th>
-						<td><input type="hidden" name="bl_em_enable_json" value="0"><label><input type="checkbox" name="bl_em_enable_json" value="1" <?php echo $chk( 'bl_em_enable_json' ); ?>> Publish the machine-readable EntityMap file</label></td></tr>
-					<tr><th scope="row">Enrich Organization schema</th>
+					<tr><th scope="row">Publish EntityMap files</th>
+						<td><input type="hidden" name="bl_em_enable_json" value="0"><label><input type="checkbox" name="bl_em_enable_json" value="1" <?php echo $chk( 'bl_em_enable_json' ); ?>> Serve <code>/entitymap.json</code> and <code>/entitymap.html</code> (for AI systems)</label></td></tr>
+
+					<tr><th scope="row">Add EntityMap data to Yoast schema</th>
+						<td>
+							<input type="hidden" name="bl_em_enable_schema" value="0">
+							<label><input type="checkbox" name="bl_em_enable_schema" value="1" <?php echo $chk( 'bl_em_enable_schema', '0' ); ?>> <strong>Inject EntityMap data into Google/Yoast Schema.org output</strong></label>
+							<p class="description"><strong>Off by default.</strong> Leave unticked to keep the EntityMap files (above) without touching your on-page Schema.org markup. The two options below only apply when this is on.</p>
+						</td></tr>
+					<tr><th scope="row" style="padding-left:2em;">↳ Organization enrichment</th>
 						<td><input type="hidden" name="bl_em_enable_org" value="0"><label><input type="checkbox" name="bl_em_enable_org" value="1" <?php echo $chk( 'bl_em_enable_org' ); ?>> Add sameAs / knowsAbout / makesOffer to Yoast's Organization node</label></td></tr>
-					<tr><th scope="row">Per-page schema nodes</th>
+					<tr><th scope="row" style="padding-left:2em;">↳ Per-page nodes</th>
 						<td><input type="hidden" name="bl_em_enable_perpage" value="0"><label><input type="checkbox" name="bl_em_enable_perpage" value="1" <?php echo $chk( 'bl_em_enable_perpage' ); ?>> Inject DefinedTerm / Service nodes on each entity's attached page</label></td></tr>
 				</table>
 				<?php submit_button(); ?>
@@ -324,14 +332,14 @@ JS;
 		?>
 		<div class="wrap" style="max-width:900px;">
 			<h1>EntityMap — How to use this plugin</h1>
-			<p style="font-size:14px;color:#555;max-width:680px;">Everything you need to manage BrightLocal's EntityMap &mdash; the single, structured record of who we are, what we offer, and the concepts we're known for. Edit it here once, and it's published automatically for both AI tools and search engines. This guide walks through the day-to-day.</p>
+			<p style="font-size:14px;color:#555;max-width:680px;">Everything you need to manage BrightLocal's EntityMap &mdash; the single, structured record of who we are, what we offer, and the concepts we're known for. Edit it here once, and it's published automatically for AI tools &mdash; and, optionally, added to your Schema.org markup for search engines. This guide walks through the day-to-day.</p>
 
 			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
 				<h2>What this plugin does</h2>
 				<p>It maintains one list of the <strong>things BrightLocal is about</strong> — our products, services, key concepts, and research — and publishes that in two places automatically:</p>
 				<ol>
 					<li><strong>An EntityMap file</strong> at <code><?php echo $home; ?></code> — a machine-readable index for <strong>AI tools</strong> (ChatGPT, Claude, etc.) so they understand and cite us accurately.</li>
-					<li><strong>Structured data (Schema.org)</strong> added to Yoast on every page — this is what <strong>Google and other search engines</strong> read for rich results and knowledge panels.</li>
+					<li><strong>Structured data (Schema.org)</strong> that can optionally be added to Yoast — what <strong>Google and other search engines</strong> read for rich results and knowledge panels. <em>This is off by default;</em> turn it on under <strong>Settings &rarr; Add EntityMap data to Yoast schema</strong>.</li>
 				</ol>
 				<p style="margin-bottom:0;">You edit the list <em>once</em>, here in wp-admin. Both outputs update on their own. You never edit a file by hand.</p>
 			</div>
@@ -397,7 +405,7 @@ JS;
 
 			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
 				<h2>Requirement for Google schema</h2>
-				<p style="margin-bottom:0;">The Organization schema only appears when <strong>Yoast SEO</strong> is active and, under <em>Yoast &rarr; Settings &rarr; Site representation</em>, the site represents an <strong>Organization</strong> with a <strong>name and a logo</strong> set. Without those, Google's Organization block (and our enrichment) won't render. The <strong>Tools</strong> page flags this automatically.</p>
+				<p style="margin-bottom:0;">The Schema.org output is <strong>off by default</strong> — enable it under <strong>Settings &rarr; Add EntityMap data to Yoast schema</strong>. Once on, the Organization schema only appears when <strong>Yoast SEO</strong> is active and, under <em>Yoast &rarr; Settings &rarr; Site representation</em>, the site represents an <strong>Organization</strong> with a <strong>name and a logo</strong> set. Without those, Google's Organization block (and our enrichment) won't render. The <strong>Tools</strong> page flags this automatically.</p>
 			</div>
 		</div>
 		<?php
