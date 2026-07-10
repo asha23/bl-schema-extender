@@ -257,8 +257,9 @@ class BL_EntityMap_Admin {
 
 			<h2>Publishing status</h2>
 			<p>
-				Endpoint: <code><?php echo esc_html( home_url( '/entitymap.json' ) ); ?></code><br>
-				Static file: <code><?php echo esc_html( $generator->static_path() ); ?></code>
+				Machine-readable: <code><a href="<?php echo esc_url( home_url( '/entitymap.json' ) ); ?>" target="_blank" rel="noopener"><?php echo esc_html( home_url( '/entitymap.json' ) ); ?></a></code><br>
+				Human-readable: <code><a href="<?php echo esc_url( home_url( '/entitymap.html' ) ); ?>" target="_blank" rel="noopener"><?php echo esc_html( home_url( '/entitymap.html' ) ); ?></a></code><br>
+				Static files: <code><?php echo esc_html( $generator->static_path() ); ?></code> + <code>entitymap.html</code>
 				<?php if ( $static_ok === '1' ) : ?>
 					— <span style="color:#008a20;">writable ✓ (served statically)</span>
 				<?php elseif ( $static_ok === '0' ) : ?>
