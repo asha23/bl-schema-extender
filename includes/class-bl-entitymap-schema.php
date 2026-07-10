@@ -139,6 +139,13 @@ class BL_EntityMap_Schema {
 		foreach ( $entities as $entity ) {
 			$type = isset( $entity['@type'] ) ? $entity['@type'] : '';
 
+			// Organization entities are already represented by Yoast's sitewide
+			// Organization node (and enriched there), so skip them here to avoid
+			// emitting a redundant, unlinked duplicate node on their own page.
+			if ( $type === 'Organization' ) {
+				continue;
+			}
+
 			if ( in_array( $type, BL_EntityMap_Store::definedterm_types(), true ) ) {
 				$schema_type = 'DefinedTerm';
 			} elseif ( in_array( $type, BL_EntityMap_Store::offer_types(), true ) ) {
