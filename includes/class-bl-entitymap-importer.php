@@ -18,9 +18,10 @@ class BL_EntityMap_Importer {
 	 * Import from a JSON file path.
 	 *
 	 * @param string $path
-	 * @return array|WP_Error  [created, updated, skipped] counts on success.
+	 * @param bool   $replace Trash entities not present in the file (full sync).
+	 * @return array|WP_Error  [created, updated, removed] counts on success.
 	 */
-	public static function import_file( $path ) {
+	public static function import_file( $path, $replace = false ) {
 		if ( ! $path || ! file_exists( $path ) ) {
 			return new WP_Error( 'no_file', 'entitymap.json not found at: ' . $path );
 		}
@@ -32,16 +33,20 @@ class BL_EntityMap_Importer {
 			return new WP_Error( 'bad_json', 'File is not a valid EntityMap document.' );
 		}
 
-		return self::import_array( $decoded );
+		return self::import_array( $decoded, $replace );
 	}
 
 	/**
 	 * Import from a decoded document array.
 	 *
 	 * @param array $doc
-	 * @return array
+	 * @param bool  $replace When true, the document is treated as the complete,
+	 *                       authoritative map: any existing entity whose entityId
+	 *                       is absent from $doc is moved to Trash (recoverable),
+	 *                       keeping the set tidy. When false, it is a merge/upsert.
+	 * @return array  [created, updated, removed]
 	 */
-	public static function import_array( $doc ) {
+	public static function import_array( $doc, $replace = false ) {
 		// Root / publisher settings.
 		if ( ! empty( $doc['version'] ) ) {
 			update_option( 'bl_em_version', sanitize_text_field( $doc['version'] ) );
@@ -65,11 +70,15 @@ class BL_EntityMap_Importer {
 
 		$created = 0;
 		$updated = 0;
+		$removed = 0;
+		$seen    = array();
 
 		foreach ( $doc['entities'] as $entity ) {
 			if ( empty( $entity['entityId'] ) || empty( $entity['name'] ) ) {
 				continue;
 			}
+
+			$seen[ $entity['entityId'] ] = true;
 
 			$existing = self::find_by_entity_id( $entity['entityId'] );
 
@@ -105,15 +114,35 @@ class BL_EntityMap_Importer {
 			update_post_meta( $post_id, '_bl_relations', self::map_relations( $entity ) );
 		}
 
+		// Full-sync: trash any entity not present in the authoritative document.
+		if ( $replace ) {
+			$all = get_posts( array(
+				'post_type'   => BL_EntityMap_Store::CPT,
+				'post_status' => array( 'publish', 'draft', 'pending' ),
+				'numberposts' => -1,
+				'fields'      => 'ids',
+			) );
+			foreach ( $all as $pid ) {
+				$eid = get_post_meta( $pid, '_bl_entity_id', true );
+				if ( $eid && ! isset( $seen[ $eid ] ) ) {
+					wp_trash_post( $pid );
+					$removed++;
+				}
+			}
+		}
+
 		BL_EntityMap_Store::flush_cache();
 
-		return array( 'created' => $created, 'updated' => $updated );
+		return array( 'created' => $created, 'updated' => $updated, 'removed' => $removed );
 	}
 
 	private static function find_by_entity_id( $entity_id ) {
+		// Include 'trash' explicitly — WP's 'any' excludes it, which would cause a
+		// previously-removed entity to be recreated as a duplicate on re-import
+		// instead of being restored/updated in place.
 		$posts = get_posts( array(
 			'post_type'   => BL_EntityMap_Store::CPT,
-			'post_status' => 'any',
+			'post_status' => array( 'publish', 'draft', 'pending', 'future', 'private', 'trash' ),
 			'numberposts' => 1,
 			'fields'      => 'ids',
 			'meta_key'    => '_bl_entity_id',

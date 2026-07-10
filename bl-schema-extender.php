@@ -3,7 +3,7 @@
 * Plugin Name: BrightLocal - Schema Extender & EntityMap
 * Plugin URI: https://brightlocal.com
 * Description: Manage an EntityMap in wp-admin as the single source of truth. Auto-generates /entitymap.json and drives Yoast Schema.org output (sitewide Organization enrichment + per-page DefinedTerm/Service nodes). Also extends product schema with reviews on flagged pages.
-* Version: 2.0.2
+* Version: 2.1.0
 * Author: Ash Whiting for BrightLocal
 * Author URI: https://brightlocal.com
 * Text Domain: bl-schema-extender
@@ -15,7 +15,7 @@
 // Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'BL_SCHEMA_VERSION', '2.0.0' );
+define( 'BL_SCHEMA_VERSION', '2.1.0' );
 define( 'BL_SCHEMA_FILE', __FILE__ );
 define( 'BL_SCHEMA_DIR', plugin_dir_path( __FILE__ ) );
 

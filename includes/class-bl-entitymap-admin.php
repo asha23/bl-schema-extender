@@ -124,12 +124,12 @@ class BL_EntityMap_Admin {
 
 		if ( $tool === 'import' ) {
 			$path   = trailingslashit( dirname( ABSPATH ) ) . 'entitymap.json';
-			$result = BL_EntityMap_Importer::import_file( $path );
+			$result = BL_EntityMap_Importer::import_file( $path, true );
 			if ( is_wp_error( $result ) ) {
 				$this->notice( 'error', $result->get_error_message() );
 			} else {
 				$generator->regenerate();
-				$this->notice( 'success', sprintf( 'Import complete: %d created, %d updated.', $result['created'], $result['updated'] ) );
+				$this->notice( 'success', sprintf( 'Import complete: %d created, %d updated, %d moved to Trash.', $result['created'], $result['updated'], $result['removed'] ) );
 			}
 		} elseif ( $tool === 'regenerate' ) {
 			$generator->regenerate();
@@ -172,7 +172,7 @@ class BL_EntityMap_Admin {
 
 		if ( $tool === 'verify_import' ) {
 			if ( empty( $report['errors'] ) ) {
-				$result = BL_EntityMap_Importer::import_array( $doc );
+				$result = BL_EntityMap_Importer::import_array( $doc, true );
 				$generator->regenerate();
 				$report['imported'] = $result;
 			} else {
@@ -211,7 +211,7 @@ class BL_EntityMap_Admin {
 			</p>
 
 			<?php if ( ! empty( $report['imported'] ) ) : ?>
-				<p style="color:#008a20;font-weight:600;margin:.25em 0;">✓ Imported: <?php echo (int) $report['imported']['created']; ?> created, <?php echo (int) $report['imported']['updated']; ?> updated. /entitymap.json regenerated.</p>
+				<p style="color:#008a20;font-weight:600;margin:.25em 0;">✓ Imported: <?php echo (int) $report['imported']['created']; ?> created, <?php echo (int) $report['imported']['updated']; ?> updated, <?php echo (int) $report['imported']['removed']; ?> moved to Trash. /entitymap.json regenerated.</p>
 			<?php elseif ( ! empty( $report['blocked'] ) ) : ?>
 				<p style="color:#b32d2e;font-weight:600;margin:.25em 0;">Not imported — fix the errors below and try again.</p>
 			<?php elseif ( $report['tool'] === 'verify' && $ok ) : ?>
