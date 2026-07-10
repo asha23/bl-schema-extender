@@ -29,6 +29,39 @@ class BL_EntityMap_CPT {
 
 		add_filter( 'manage_' . self::CPT . '_posts_columns', array( $this, 'columns' ) );
 		add_action( 'manage_' . self::CPT . '_posts_custom_column', array( $this, 'column_content' ), 10, 2 );
+
+		// Default the All Entities list to entity-ID order, and make that column sortable.
+		add_action( 'pre_get_posts', array( $this, 'default_admin_order' ) );
+		add_filter( 'manage_edit-' . self::CPT . '_sortable_columns', array( $this, 'sortable_columns' ) );
+	}
+
+	/**
+	 * Order the admin list by entity ID (e_001, e_002, …) by default, instead of
+	 * by date. IDs are zero-padded so a string sort is numerically correct.
+	 */
+	public function default_admin_order( $query ) {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+		if ( $query->get( 'post_type' ) !== self::CPT ) {
+			return;
+		}
+
+		$orderby = $query->get( 'orderby' );
+
+		// Apply when no sort is chosen, or when the user clicks the Entity ID column.
+		if ( $orderby === '' || $orderby === 'bl_eid' ) {
+			$query->set( 'meta_key', '_bl_entity_id' );
+			$query->set( 'orderby', 'meta_value' );
+			if ( $orderby === '' ) {
+				$query->set( 'order', 'ASC' );
+			}
+		}
+	}
+
+	public function sortable_columns( $cols ) {
+		$cols['bl_eid'] = 'bl_eid';
+		return $cols;
 	}
 
 	public function maybe_flush( $post_id ) {
