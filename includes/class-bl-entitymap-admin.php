@@ -323,7 +323,7 @@ JS;
 		?>
 		<div class="wrap" style="max-width:900px;">
 			<h1>EntityMap — How to use this plugin</h1>
-			<p style="font-size:14px;color:#555;">A plain-English guide for the SEO team. No code required.</p>
+			<p style="font-size:14px;color:#555;max-width:680px;">Everything you need to manage BrightLocal's EntityMap &mdash; the single, structured record of who we are, what we offer, and the concepts we're known for. Edit it here once, and it's published automatically for both AI tools and search engines. This guide walks through the day-to-day.</p>
 
 			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
 				<h2>What this plugin does</h2>
