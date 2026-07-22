@@ -82,9 +82,8 @@ class BL_EntityMap_CPT {
 			),
 			'public'       => false,
 			'show_ui'      => true,
-			'show_in_menu' => true,
-			'menu_icon'    => 'dashicons-networking',
-			'menu_position' => 58,
+			// Nest "All Entities" / "Add New" under the shared BL AI Tools menu.
+			'show_in_menu' => BL_AI_Tools_Registry::MENU_SLUG,
 			'supports'     => array( 'title', 'editor', 'page-attributes' ),
 			'has_archive'  => false,
 			'rewrite'      => false,

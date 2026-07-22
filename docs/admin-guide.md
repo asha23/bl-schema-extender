@@ -1,17 +1,96 @@
 # Admin guide
 
-All admin UI lives under the **EntityMap** menu (the `bl_entity` CPT menu). Three
-submenus are added by `BL_EntityMap_Admin`:
+Everything lives under the top-level **BL AI Tools** menu (owned by
+`BL_AI_Tools_Registry`, slug `bl-ai-tools`, capability `edit_posts`):
 
-- **Settings** (`bl-em-settings`, `manage_options`)
-- **Tools** (`bl-em-tools`, `manage_options`)
-- **Help & Docs** (`bl-em-help`, `edit_posts`)
+```
+BL AI Tools
+├── Dashboard        Cards for each registered tool (the registry's landing page)
+├── Entity Maps      The tool's tabbed hub — Files · Import · Settings · Help
+├── All Entities     bl_entity CPT list (nested here via show_in_menu)
+└── Add New Entity   bl_entity CPT editor
+```
 
-…alongside the CPT's own **All Entities** / **Add New** screens.
+The **Entity Maps** hub is a single page (`bl-em-entity-maps`, `manage_options`)
+rendered by `BL_EntityMap_Admin::render_hub()`, which switches on `?tab=` between
+four tabs. The CPT screens (All Entities / Add New) are standard WordPress CPT
+screens, nested under the menu — that's where entities are actually edited.
 
-## Settings
+## Files tab (default)
 
-Registered under the `bl_em_settings` option group. Two sections:
+The file-management hub for the two published files in the webroot
+(`corpblob-roots/public/`):
+
+- **Per-file cards** for `entitymap.json` and `entitymap.html`: live URL,
+  last-built time (site timezone + relative), size, and **View** / **Download**
+  buttons. Downloads stream through a nonce + `manage_options`-gated
+  `handle_download()` action (`bl_em_dl=json|html|backup`).
+- **Static-write status** (`bl_em_static_ok`): *writable ✓ (served directly)* /
+  *not writable (served dynamically)* / *not yet generated*.
+- **Regenerate now** — rebuilds both files from the current entities.
+- **Backups & restore** — see below.
+- **Preview** — read-only textarea of the current `entitymap.json`.
+
+### Backups & restore (undo)
+
+`BL_EntityMap_Backups` keeps timestamped snapshots of `entitymap.json` in a
+private, listing-guarded directory: `uploads/bl-ai-tools/entitymap-backups/`
+(named `entitymap-YYYYMMDD-HHMMSS.json`, with an optional `.meta` reason sidecar).
+
+- A snapshot is taken **automatically before every destructive change** — a
+  webroot import, an uploaded "verify & import", and before a restore. It is
+  **not** taken on ordinary regenerates/saves, so backups stay meaningful.
+- The Files tab lists snapshots (newest first) with **Restore**, **Download**,
+  and **Delete**.
+- **Restore** re-imports that snapshot into the database (full sync) and
+  regenerates the files — a true undo of the whole map, not just the file on
+  disk. The current state is itself snapshotted first, so a restore is reversible.
+- Retention is `bl_em_backup_keep` (default **10**); older snapshots are pruned.
+
+This is what preserves an uploaded map: uploading/importing a new one archives the
+previous published `entitymap.json` first, so you can always revert.
+
+## Import tab
+
+- **Upload & verify a JSON file** — **Verify only** (dry-run report, no write) and
+  **Verify & import** (imports only if zero errors; warnings allowed). Report is
+  stashed in a per-user transient (`bl_em_verify_<id>`, 5 min) and shown once.
+- **Import from the webroot** — imports the `entitymap.json` in the site root as a
+  full sync. Disabled if no file is present.
+- **Data integrity** — the live DB validator (see below).
+
+All tool actions are gated by `manage_options` + the `bl_em_tool` nonce.
+
+### Import mechanics — `BL_EntityMap_Importer::import_array()`
+
+- Upserts each entity **by `entityId`** (idempotent). `find_by_entity_id()`
+  includes `trash`, so a previously-removed entity is restored in place rather
+  than duplicated.
+- Writes the root/publisher settings from the document; maps chunks + relations
+  back into the flat meta shape (`context.condition` → `condition`); picks
+  `_bl_page_url` via `primary_url()` (first `definition` chunk URL, else first
+  chunk URL).
+- **Full sync (`$replace = true`):** any existing entity **not** in the document
+  is moved to **Trash**. Both import paths run in this mode — always upload the
+  *whole* map. (A snapshot is archived first, so this is undoable.)
+
+### Dry-run validation — `BL_EntityMap_Importer::validate_document()`
+
+Never touches the DB. *Errors:* missing required fields (`entityId`, `@type`,
+`name`, `description`), duplicate `entityId`/`chunkId`, relation to a missing
+entity. *Warnings:* unrecognised `@type`/predicate, invalid `sameAs` URL, empty
+chunk text, incomplete relation. Plus entity/chunk/relation counts.
+
+### Live DB validation — `BL_EntityMap_Admin::validate()`
+
+Runs against the current published entities (forced, uncached): counts; duplicate
+entity/chunk IDs (errors); relations to missing entities (error); entities missing
+a description (warning); Organization-entity count (warns on 0 or >1); and the
+Yoast site-representation prerequisite (warns if not a company).
+
+## Settings tab
+
+Registered under the `bl_em_settings` option group.
 
 ### Publisher & root
 
@@ -26,86 +105,24 @@ Registered under the `bl_em_settings` option group. Two sections:
 | `bl_em_verification` | `self-declared` | text | document `verificationStatus` |
 | `bl_em_profile` | `core` | text | document `profile` |
 
-### Output toggles
+### Output
 
 | Option | Default | Controls |
 |--------|:-------:|----------|
-| `bl_em_enable_json` | `1` | Publish `/entitymap.json` + `/entitymap.html` (static write + dynamic endpoints). Off → both 404 and no static write. |
+| `bl_em_enable_json` | `1` | Publish `/entitymap.json` + `/entitymap.html` (static write + dynamic endpoints). Off → both 404, no static write. |
+| `bl_em_backup_keep` | `10` | Number of `entitymap.json` snapshots to retain (`int`, absint-sanitised). |
 | `bl_em_enable_schema` | `0` | **Master** switch for injecting EntityMap data into Yoast Schema.org. Off by default. |
 | `bl_em_enable_org` | `1` | (only when master on) Organization enrichment. |
 | `bl_em_enable_perpage` | `1` | (only when master on) Per-page nodes. |
 
-Booleans are sanitised to `'1'` / `'0'`. Saving Settings triggers
-`maybe_regenerate_after_save()`, which flushes the cache and regenerates the
-outputs immediately.
+Booleans are sanitised to `'1'`/`'0'`. Saving Settings triggers
+`maybe_regenerate_after_save()` (detects `page=bl-em-entity-maps` +
+`settings-updated`), which flushes the cache and regenerates immediately.
 
-## Tools
+## Help tab
 
-`render_tools()` shows:
-
-- **Publishing status** — the live `/entitymap.json` and `/entitymap.html` URLs,
-  the static file path, and whether the last static write succeeded
-  (`bl_em_static_ok`: *writable ✓* / *not writable, served dynamically* / *not
-  yet generated*).
-- **Regenerate now** — forces a rebuild + rewrite of both static files.
-- **Import from entitymap.json** — imports the `entitymap.json` sitting in the
-  webroot (`dirname(ABSPATH)/entitymap.json`) as a **full sync** (`$replace = true`).
-- **Upload & verify a JSON file** — see below.
-- **Validation** — the live DB-integrity report (see below).
-- **Generated entitymap.json** — a read-only preview of the current output.
-
-All tool actions are gated by `manage_options` + the `bl_em_tool` nonce.
-
-### Import & validation workflows
-
-Two distinct concepts:
-
-**1. Dry-run validation of an uploaded file** —
-`BL_EntityMap_Importer::validate_document()`. Never touches the DB. Checks:
-
-- *Errors:* missing required fields (`entityId`, `@type`, `name`, `description`),
-  duplicate `entityId`s, duplicate `chunkId`s, relations pointing at a missing
-  entity.
-- *Warnings:* unrecognised `@type`, invalid `sameAs` URL, empty chunk text,
-  incomplete relations, unrecognised predicate.
-- *Stats:* entity / chunk / relation counts.
-
-The upload form offers **Verify only** (report, no write) and **Verify & import**
-(imports **only if there are zero errors**; warnings are allowed). The report is
-stashed in a per-user transient (`bl_em_verify_<user_id>`, 5 min) and rendered
-once on the next page load. Uploads must be `.json` and pass the standard
-`is_uploaded_file` / upload-error checks.
-
-**2. The actual import** — `BL_EntityMap_Importer::import_array()`:
-
-- Upserts each entity **by `entityId`** (idempotent — re-running updates rather
-  than duplicating). `find_by_entity_id()` deliberately includes `trash`, so a
-  previously-removed entity is restored in place instead of re-created as a
-  duplicate.
-- Also writes the root/publisher settings from the document.
-- Maps chunks and relations back into the flat meta shape (including
-  `context.condition` → `condition`), and picks a `_bl_page_url` via
-  `primary_url()`: the first chunk whose `contentType` is `definition`, else the
-  first chunk with a `sourceUrl`.
-- **Full sync (`$replace = true`):** any existing entity whose `entityId` is
-  **not** in the uploaded document is moved to **Trash** (recoverable). Both the
-  webroot import and Verify & import run in this mode — so always upload the
-  *whole* map, never a partial list.
-- Flushes the cache at the end.
-
-### Live DB validation — `BL_EntityMap_Admin::validate()`
-
-Runs against the current published entities (forced, uncached) and reports:
-counts; duplicate entity IDs / chunk IDs (errors); relations to missing entities
-(error); entities missing a description (warning); the Organization-entity count
-(warns on 0 or >1); and the Yoast site-representation prerequisite (warns if not
-set to a company).
-
-## Help & Docs
-
-`render_help()` is an in-admin, end-user guide (glossary, everyday tasks, the
-bulk-upload caveat, settings overview, and a paste-in DevTools console snippet
-that tabulates a page's JSON-LD `@graph` and prints `knowsAbout` / `makesOffer`
-counts). It restates that Schema.org output is off by default and requires Yoast
-site representation to be a company. This is the audience-facing counterpart to
-this `docs/` folder (which targets developers).
+`BL_EntityMap_Admin::tab_help()` — the in-admin, end-user guide: what the tool
+does (honest about the files being a curated catalogue and Yoast being the part
+AI/Google read today), a glossary, everyday tasks, the whole-map-upload caveat,
+and a paste-in DevTools snippet that tabulates a page's JSON-LD `@graph` and prints
+`knowsAbout` / `makesOffer` counts. The end-user counterpart to this `docs/` folder.

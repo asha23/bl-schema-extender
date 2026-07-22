@@ -41,16 +41,37 @@ nodes). You never edit a file by hand — the DB is the single source of truth.
 ## File layout
 
 ```
-bl-ai-tools.php                          Bootstrap: BL_AI_* constants, requires, boot/activation hooks
+bl-ai-tools.php                          Bootstrap: BL_AI_* constants, tool registry, boot/activation hooks
+uninstall.php                            Full data cleanup on plugin delete (options, CPT posts, files, backups)
 includes/
-  class-bl-entitymap-store.php           Reads bl_entity posts → normalised entity data; caching, vocabularies
-  class-bl-entitymap-cpt.php             Registers the bl_entity CPT + native meta-box repeater UI
-  class-bl-entitymap-generator.php       Builds the document; serves /entitymap.json + .html; writes static files
-  class-bl-entitymap-schema.php          Yoast filters: enrich Organization + inject per-page nodes
-  class-bl-entitymap-importer.php        Import + validate entities from an entitymap.json document
-  class-bl-entitymap-admin.php           Settings / Tools / Help pages under the EntityMap menu
+  framework/
+    class-bl-ai-tool.php                 Abstract base every tool module extends
+    class-bl-ai-tools-registry.php       Holds/boots tools + owns the top-level "BL AI Tools" menu + dashboard
+  tools/
+    entity-maps/                         The Entity Maps tool module (self-contained)
+      class-bl-ai-tool-entity-maps.php   Module: wires the classes below into the menu (extends BL_AI_Tool)
+      class-bl-entitymap-store.php       Reads bl_entity posts → normalised entity data; caching, vocabularies
+      class-bl-entitymap-cpt.php         Registers the bl_entity CPT + native meta-box repeater UI
+      class-bl-entitymap-generator.php   Builds the document; serves /entitymap.json + .html; writes static files
+      class-bl-entitymap-schema.php      Yoast filters: enrich Organization + inject per-page nodes
+      class-bl-entitymap-importer.php    Import + validate entities from an entitymap.json document
+      class-bl-entitymap-backups.php     Timestamped entitymap.json snapshots + restore (undo)
+      class-bl-entitymap-admin.php       The tabbed "Entity Maps" hub (Files / Import / Settings / Help)
 docs/                                    ← this documentation
 ```
+
+## Modular structure
+
+The plugin is a **collection of AI tools**. A thin framework (`includes/framework/`)
+provides an abstract `BL_AI_Tool` base and a `BL_AI_Tools_Registry` that owns a
+single top-level **BL AI Tools** admin menu plus a dashboard of tool cards. Each
+tool is a self-contained module under `includes/tools/<tool>/` that extends
+`BL_AI_Tool` and slots into that menu. **Entity Maps** is the first module.
+
+Adding a new tool: create `includes/tools/<tool>/`, subclass `BL_AI_Tool`,
+`require` its module in [`bl-ai-tools.php`](../bl-ai-tools.php), and register it in
+`bl_ai_registry()`. Nothing else changes — the menu, dashboard card, and booting
+are handled by the registry. See [architecture.md](architecture.md).
 
 ## Conventions (important before editing)
 

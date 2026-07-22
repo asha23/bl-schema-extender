@@ -2,39 +2,52 @@
 
 ## Boot sequence
 
-Everything lives in [`bl-ai-tools.php`](../bl-ai-tools.php):
+The bootstrap [`bl-ai-tools.php`](../bl-ai-tools.php) is now thin — it wires the
+tool registry, not the feature directly:
 
 1. Guards `ABSPATH`, then defines `BL_AI_VERSION`, `BL_AI_FILE`, `BL_AI_DIR`.
-2. `require_once`s the seven class files in `includes/`.
-3. `bl_ai_boot()` runs on `plugins_loaded` and instantiates the four active
-   classes:
+2. `require_once`s the framework (`BL_AI_Tool`, `BL_AI_Tools_Registry`) and each
+   tool module (currently just `class-bl-ai-tool-entity-maps.php`, which in turn
+   `require`s its own feature classes).
+3. `bl_ai_registry()` builds a singleton `BL_AI_Tools_Registry` and registers the
+   tool instances (`$registry->add( new BL_AI_Tool_EntityMaps() )`).
+4. `bl_ai_boot()` runs on `plugins_loaded` and calls `$registry->boot()`, which:
+   - calls `register()` on every tool (that's where the EntityMap module
+     instantiates `BL_EntityMap_CPT`, `BL_EntityMap_Generator`,
+     `BL_EntityMap_Schema`, and `BL_EntityMap_Admin`);
+   - hooks `admin_menu` at **priority 9** so the top-level menu exists before WP
+     builds CPT submenus (priority 10) that attach to it.
+5. **Activation** (`bl_ai_activate`): calls `$registry->activate()` (each tool
+   registers its CPTs/rewrites), then `flush_rewrite_rules()` **once**.
+6. **Deactivation** (`bl_ai_deactivate`): `flush_rewrite_rules()`.
+7. **Uninstall** ([`uninstall.php`](../uninstall.php)): on plugin *delete*, removes
+   all options, transients, `bl_entity` posts, the static files, and the backups
+   directory.
 
-   ```php
-   new BL_EntityMap_CPT();       // CPT + meta boxes
-   new BL_EntityMap_Generator(); // rewrites, endpoints, static-file writer
-   new BL_EntityMap_Schema();    // Yoast @graph filters (only attach if enabled)
-   new BL_EntityMap_Admin();     // Settings / Tools / Help pages
-   ```
+`BL_EntityMap_Store` and `BL_EntityMap_Importer` remain **static utility
+classes** — never instantiated in the boot path.
 
-   `BL_EntityMap_Store` and `BL_EntityMap_Importer` are **static utility
-   classes** — never instantiated in the boot path; they're called statically by
-   the others.
+## The modular framework
 
-4. **Activation** (`bl_ai_activate`, `register_activation_hook`): registers the
-   CPT, adds the rewrite rules, then `flush_rewrite_rules()` **once** so
-   `/entitymap.json` and `/entitymap.html` resolve.
-5. **Deactivation** (`bl_ai_deactivate`): `flush_rewrite_rules()` to clean up.
+| Class | File | Role |
+|-------|------|------|
+| `BL_AI_Tool` | `framework/class-bl-ai-tool.php` | Abstract base. A tool implements `id()` + `label()`, and optionally `description()`, `icon()`, `menu_slug()`, `register()` (runtime hooks), `register_admin($parent)` (submenus), and `activate()`. |
+| `BL_AI_Tools_Registry` | `framework/class-bl-ai-tools-registry.php` | Holds the tools, boots them, owns the top-level **BL AI Tools** menu (`MENU_SLUG = bl-ai-tools`), and renders the dashboard of tool cards. |
 
-## Class responsibilities
+## Class responsibilities (Entity Maps tool)
+
+All under `includes/tools/entity-maps/`:
 
 | Class | File | Instantiated? | Role |
 |-------|------|:-------------:|------|
-| `BL_EntityMap_Store` | `class-bl-entitymap-store.php` | static | The single point that reads entities out of the DB and normalises them to the `entitymap.json` shape. Owns the controlled vocabularies, URL normalisation, caching, and `next_entity_id()`. |
-| `BL_EntityMap_CPT` | `class-bl-entitymap-cpt.php` | ✓ | Registers the `bl_entity` CPT, renders the three meta boxes (Details / Evidence Chunks / Relations), sanitises + saves meta, admin columns & ordering, and the vanilla-JS repeater. |
-| `BL_EntityMap_Generator` | `class-bl-entitymap-generator.php` | ✓ | Assembles the document, renders both JSON and HTML, registers rewrites + query vars, serves the dynamic endpoints, and writes both static files. |
-| `BL_EntityMap_Schema` | `class-bl-entitymap-schema.php` | ✓ | Hooks Yoast's `wpseo_schema_*` filters to enrich the Organization node and inject per-page nodes. Only attaches its filters when enabled (see the toggle logic below). |
+| `BL_AI_Tool_EntityMaps` | `class-bl-ai-tool-entity-maps.php` | ✓ | The module. Wires the classes below into the BL AI Tools menu and adds the "Entity Maps" tabbed hub submenu. `require`s its own feature classes. |
+| `BL_EntityMap_Store` | `class-bl-entitymap-store.php` | static | The single point that reads entities out of the DB and normalises them to the `entitymap.json` shape. Owns vocabularies, URL normalisation, caching, `next_entity_id()`. |
+| `BL_EntityMap_CPT` | `class-bl-entitymap-cpt.php` | ✓ | Registers the `bl_entity` CPT (nested under the BL AI Tools menu via `show_in_menu`), the three meta boxes, save/sanitise, columns & ordering, the vanilla-JS repeater. |
+| `BL_EntityMap_Generator` | `class-bl-entitymap-generator.php` | ✓ | Assembles the document, renders JSON + HTML, registers rewrites + query vars, serves the dynamic endpoints, writes both static files. |
+| `BL_EntityMap_Schema` | `class-bl-entitymap-schema.php` | ✓ | Hooks Yoast's `wpseo_schema_*` filters to enrich the Organization node and inject per-page nodes. Only attaches when enabled. |
 | `BL_EntityMap_Importer` | `class-bl-entitymap-importer.php` | static | Imports/upserts entities from a decoded `entitymap.json`, and validates a document as a dry run. |
-| `BL_EntityMap_Admin` | `class-bl-entitymap-admin.php` | ✓ | The Settings / Tools / Help admin pages, upload verification, and the live DB-integrity validator. |
+| `BL_EntityMap_Backups` | `class-bl-entitymap-backups.php` | static | Timestamped `entitymap.json` snapshots in a private uploads dir; archive-before-import, list, download, restore (re-import + regenerate), prune. |
+| `BL_EntityMap_Admin` | `class-bl-entitymap-admin.php` | ✓ | The tabbed **Entity Maps** hub (Files / Import / Settings / Help), settings, tool actions, gated downloads, and the live DB-integrity validator. |
 
 ## Data flow
 

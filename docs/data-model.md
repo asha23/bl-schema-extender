@@ -5,8 +5,9 @@
 Each EntityMap entity is one `bl_entity` post
 (`BL_EntityMap_CPT::CPT` / `BL_EntityMap_Store::CPT`). It is private
 (`public => false`, `show_ui => true`), not in REST, has no archive and no
-front-end rewrite. Menu icon `dashicons-networking`, position 58, supports
-`title`, `editor`, `page-attributes`.
+front-end rewrite. Its admin screens are nested under the shared **BL AI Tools**
+menu (`show_in_menu => BL_AI_Tools_Registry::MENU_SLUG`). Supports `title`,
+`editor`, `page-attributes`.
 
 Mapping of the WordPress post to entity fields:
 

@@ -2,7 +2,7 @@
 /**
 * Plugin Name: BrightLocal - AI Tools
 * Plugin URI: https://brightlocal.com
-* Description: BrightLocal AI Tools. Work In Progress - Currently we can: Manage an EntityMap in wp-admin.
+* Description: BrightLocal AI Tools — a modular collection of AI-facing tools. Currently: Entity Maps (manage entitymap.json / entitymap.html in wp-admin).
 * Version: 2.6.0
 * Author: Ash Whiting for BrightLocal
 * Author URI: https://brightlocal.com
@@ -20,33 +20,42 @@ define( 'BL_AI_FILE', __FILE__ );
 define( 'BL_AI_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
- * Load the plugin's classes.
+ * Load the modular framework, then each tool module. To add a new tool: require
+ * its module file here and register it in bl_ai_registry() below.
  */
-require_once BL_AI_DIR . 'includes/class-bl-entitymap-store.php';
-require_once BL_AI_DIR . 'includes/class-bl-entitymap-cpt.php';
-require_once BL_AI_DIR . 'includes/class-bl-entitymap-generator.php';
-require_once BL_AI_DIR . 'includes/class-bl-entitymap-schema.php';
-require_once BL_AI_DIR . 'includes/class-bl-entitymap-importer.php';
-require_once BL_AI_DIR . 'includes/class-bl-entitymap-admin.php';
+require_once BL_AI_DIR . 'includes/framework/class-bl-ai-tool.php';
+require_once BL_AI_DIR . 'includes/framework/class-bl-ai-tools-registry.php';
+require_once BL_AI_DIR . 'includes/tools/entity-maps/class-bl-ai-tool-entity-maps.php';
 
 /**
- * Boot everything.
+ * The registry of tools, built once. Register additional BL_AI_Tool modules
+ * here and they slot into the shared "BL AI Tools" menu automatically.
+ *
+ * @return BL_AI_Tools_Registry
+ */
+function bl_ai_registry() {
+	static $registry = null;
+	if ( null === $registry ) {
+		$registry = new BL_AI_Tools_Registry();
+		$registry->add( new BL_AI_Tool_EntityMaps() );
+	}
+	return $registry;
+}
+
+/**
+ * Boot every registered tool.
  */
 function bl_ai_boot() {
-	new BL_EntityMap_CPT();
-	new BL_EntityMap_Generator();
-	new BL_EntityMap_Schema();
-	new BL_EntityMap_Admin();
+	bl_ai_registry()->boot();
 }
 add_action( 'plugins_loaded', 'bl_ai_boot' );
 
 /**
- * Activation: register the CPT + rewrite endpoint, then flush rewrite rules
- * once so /entitymap.json resolves.
+ * Activation: let each tool register its CPTs / rewrite endpoints, then flush
+ * rewrite rules once so /entitymap.json resolves.
  */
 function bl_ai_activate() {
-	( new BL_EntityMap_CPT() )->register_post_type();
-	( new BL_EntityMap_Generator() )->add_rewrite();
+	bl_ai_registry()->activate();
 	flush_rewrite_rules();
 }
 register_activation_hook( __FILE__, 'bl_ai_activate' );
