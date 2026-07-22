@@ -2,8 +2,8 @@
 /**
 * Plugin Name: BrightLocal - AI Tools
 * Plugin URI: https://brightlocal.com
-* Description: BrightLocal AI Tools. Manage an EntityMap in wp-admin as the single source of truth. Auto-generates /entitymap.json and drives Yoast Schema.org output (sitewide Organization enrichment + per-page DefinedTerm/Service nodes). Also extends product schema with reviews on flagged pages.
-* Version: 2.5.0
+* Description: BrightLocal AI Tools. Work In Progress - Currently we can: Manage an EntityMap in wp-admin.
+* Version: 2.6.0
 * Author: Ash Whiting for BrightLocal
 * Author URI: https://brightlocal.com
 * Text Domain: bl-ai-tools
@@ -15,7 +15,7 @@
 // Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'BL_AI_VERSION', '2.5.0' );
+define( 'BL_AI_VERSION', '2.6.0' );
 define( 'BL_AI_FILE', __FILE__ );
 define( 'BL_AI_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -28,7 +28,6 @@ require_once BL_AI_DIR . 'includes/class-bl-entitymap-generator.php';
 require_once BL_AI_DIR . 'includes/class-bl-entitymap-schema.php';
 require_once BL_AI_DIR . 'includes/class-bl-entitymap-importer.php';
 require_once BL_AI_DIR . 'includes/class-bl-entitymap-admin.php';
-require_once BL_AI_DIR . 'includes/class-bl-product-review-schema.php';
 
 /**
  * Boot everything.
@@ -38,7 +37,6 @@ function bl_ai_boot() {
 	new BL_EntityMap_Generator();
 	new BL_EntityMap_Schema();
 	new BL_EntityMap_Admin();
-	new BL_Product_Review_Schema();
 }
 add_action( 'plugins_loaded', 'bl_ai_boot' );
 

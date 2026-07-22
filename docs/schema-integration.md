@@ -1,15 +1,9 @@
 # Schema.org integration
 
-Two independent features write Schema.org markup, both through Yoast's
-`wpseo_schema_*` filter pipeline. **Yoast SEO must be active** for either to do
-anything.
-
-1. **EntityMap → Yoast** (`BL_EntityMap_Schema`) — driven by the DB entities.
-   Behind a master toggle, off by default.
-2. **Product + reviews** (`BL_Product_Review_Schema`) — legacy, standalone,
-   ACF-driven, unrelated to the EntityMap.
-
----
+The EntityMap data can be layered into Yoast's Schema.org output through the
+`wpseo_schema_*` filter pipeline (`BL_EntityMap_Schema`). **Yoast SEO must be
+active** for any of it to do anything, and it is behind a master toggle that is
+off by default.
 
 ## EntityMap → Yoast (`BL_EntityMap_Schema`)
 
@@ -68,37 +62,3 @@ The Organization node only renders when Yoast SEO is active **and** *Yoast →
 Settings → Site representation* is set to an **Organization/company** with a name
 and logo. The Tools validator warns when this isn't the case, since the
 enrichment would otherwise be inert.
-
----
-
-## Product + reviews (`BL_Product_Review_Schema`)
-
-A legacy feature (predates the EntityMap; relocated into `includes/` at 2.0.0),
-**unchanged in behaviour** and unrelated to the EntityMap data. It depends on
-**ACF**.
-
-On the front end (`is_admin()` guarded) it hooks `wp` → `create_schema_constructor()`:
-
-- Reads the ACF field `activate_product_schema` on the current post. Only runs
-  when it equals `'on'`.
-- If the ACF options field `debug_product_schema` is set, enables Yoast's
-  development mode (`yoast_seo_development_mode`).
-- When active, it attaches three Yoast filters:
-  - `wpseo_schema_webpage` → `change_schema_to_product()`: switches the piece's
-    `@type` from `WebPage` to `Product`.
-  - `wpseo_schema_graph_pieces` → `remove_breadcrumbs_from_schema()`: strips the
-    Breadcrumb piece.
-  - `wpseo_schema_webpage` → `change_schema_properties()`: builds the Product
-    body.
-
-`change_schema_properties()` sets `sku` (slugified title), `mpn` (title),
-`brand` (BrightLocal), and an `aggregateRating` from the ACF fields
-`aggregate_rating` / `best_rating` / `total_reviews` (with defaults 0 / 5 / 5).
-It unsets `breadcrumb`, `potentialAction`, `datePublished`, `dateModified`,
-`inLanguage`, `isPartOf`. Reviews are read from the ACF flexible-content field
-`sections_content` — for each visible `testimonials` layout it walks the
-`testimonial` rows and emits a `Review` (with `reviewRating`, `author`,
-`publisher`) for every row that has a score.
-
-> This feature has its own ACF field contract and does not read or write any
-> `bl_entity` data. Treat it as a separate concern from the EntityMap.

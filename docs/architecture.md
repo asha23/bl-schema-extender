@@ -6,7 +6,7 @@ Everything lives in [`bl-ai-tools.php`](../bl-ai-tools.php):
 
 1. Guards `ABSPATH`, then defines `BL_AI_VERSION`, `BL_AI_FILE`, `BL_AI_DIR`.
 2. `require_once`s the seven class files in `includes/`.
-3. `bl_ai_boot()` runs on `plugins_loaded` and instantiates the five active
+3. `bl_ai_boot()` runs on `plugins_loaded` and instantiates the four active
    classes:
 
    ```php
@@ -14,7 +14,6 @@ Everything lives in [`bl-ai-tools.php`](../bl-ai-tools.php):
    new BL_EntityMap_Generator(); // rewrites, endpoints, static-file writer
    new BL_EntityMap_Schema();    // Yoast @graph filters (only attach if enabled)
    new BL_EntityMap_Admin();     // Settings / Tools / Help pages
-   new BL_Product_Review_Schema(); // legacy Product+reviews feature
    ```
 
    `BL_EntityMap_Store` and `BL_EntityMap_Importer` are **static utility
@@ -36,7 +35,6 @@ Everything lives in [`bl-ai-tools.php`](../bl-ai-tools.php):
 | `BL_EntityMap_Schema` | `class-bl-entitymap-schema.php` | ✓ | Hooks Yoast's `wpseo_schema_*` filters to enrich the Organization node and inject per-page nodes. Only attaches its filters when enabled (see the toggle logic below). |
 | `BL_EntityMap_Importer` | `class-bl-entitymap-importer.php` | static | Imports/upserts entities from a decoded `entitymap.json`, and validates a document as a dry run. |
 | `BL_EntityMap_Admin` | `class-bl-entitymap-admin.php` | ✓ | The Settings / Tools / Help admin pages, upload verification, and the live DB-integrity validator. |
-| `BL_Product_Review_Schema` | `class-bl-product-review-schema.php` | ✓ | Legacy, standalone: converts the Yoast WebPage piece to a Product and injects reviews on ACF-flagged pages. Not part of the EntityMap flow. |
 
 ## Data flow
 
