@@ -43,6 +43,7 @@ function bl_ai_uninstall_cleanup() {
 		'bl_em_enable_perpage',
 		'bl_em_static_ok',
 		'bl_em_backup_keep',
+		'bl_em_entity_seq',
 	);
 	foreach ( $options as $option ) {
 		delete_option( $option );

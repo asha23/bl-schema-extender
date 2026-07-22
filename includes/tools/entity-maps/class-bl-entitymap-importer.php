@@ -131,6 +131,10 @@ class BL_EntityMap_Importer {
 			}
 		}
 
+		// Imports write _bl_entity_id directly, so raise the id counter to match —
+		// otherwise a subsequently allocated id could collide with an imported one.
+		BL_EntityMap_Store::reconcile_seq();
+
 		BL_EntityMap_Store::flush_cache();
 
 		return array( 'created' => $created, 'updated' => $updated, 'removed' => $removed );

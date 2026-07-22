@@ -19,6 +19,7 @@ require_once __DIR__ . '/class-bl-entitymap-generator.php';
 require_once __DIR__ . '/class-bl-entitymap-schema.php';
 require_once __DIR__ . '/class-bl-entitymap-importer.php';
 require_once __DIR__ . '/class-bl-entitymap-backups.php';
+require_once __DIR__ . '/class-bl-entitymap-manager.php';
 require_once __DIR__ . '/class-bl-entitymap-admin.php';
 
 class BL_AI_Tool_EntityMaps extends BL_AI_Tool {
@@ -74,5 +75,8 @@ class BL_AI_Tool_EntityMaps extends BL_AI_Tool {
 	public function activate() {
 		( new BL_EntityMap_CPT() )->register_post_type();
 		( new BL_EntityMap_Generator() )->add_rewrite();
+		// Provision the private entitymap-backups folder up front (it is also
+		// created on demand, but wiring it into activation guarantees it exists).
+		BL_EntityMap_Backups::dir();
 	}
 }

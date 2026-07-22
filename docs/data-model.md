@@ -13,7 +13,13 @@ Mapping of the WordPress post to entity fields:
 
 - **Post title** → entity `name`
 - **Post content** → entity `description` (stripped of tags on read)
-- Everything else lives in **post meta**, edited via three meta boxes.
+- Everything else lives in **post meta**.
+
+Entities are curated on the **Manage Entities** screen (`BL_EntityMap_Manager`),
+a single master–detail editor that upserts these posts over AJAX. The classic
+per-post editor (title/content + three meta boxes) still exists as a hidden
+fallback. Both paths write through `BL_EntityMap_Store::save_entity_meta()`, so
+they sanitise and store identically.
 
 The admin list defaults to **Entity ID order** (`_bl_entity_id`, ascending) rather
 than by date, and the *Entity ID* / *Type* columns are added after the title
@@ -23,7 +29,7 @@ column. IDs are zero-padded (`e_001`), so a string sort is numerically correct.
 
 | Meta key | Source (meta box) | Notes |
 |----------|-------------------|-------|
-| `_bl_entity_id` | assigned on first save | Stable ID `e_NNN`. Read-only in the UI. Allocated by `BL_EntityMap_Store::next_entity_id()` (max existing + 1). |
+| `_bl_entity_id` | assigned on first save | Stable ID `e_NNN`. Read-only in the UI. Allocated by `BL_EntityMap_Store::next_entity_id()`, backed by a monotonic high-water mark (`bl_em_entity_seq` option, reconciled with the DB and with imports) so an ID is **never reused** — deleting the highest-numbered entity does not free its ID. |
 | `_bl_type` | Entity Details → Type | One of the entity-type vocabulary. Defaults to `Concept`. |
 | `_bl_alternate_name` | Entity Details | Optional `alternateName`. |
 | `_bl_canonical_label` | Entity Details | Optional, for proprietary terms → `canonicalLabel`. |

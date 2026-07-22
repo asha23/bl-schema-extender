@@ -14,7 +14,8 @@ tool registry, not the feature directly:
 4. `bl_ai_boot()` runs on `plugins_loaded` and calls `$registry->boot()`, which:
    - calls `register()` on every tool (that's where the EntityMap module
      instantiates `BL_EntityMap_CPT`, `BL_EntityMap_Generator`,
-     `BL_EntityMap_Schema`, and `BL_EntityMap_Admin`);
+     `BL_EntityMap_Schema`, and `BL_EntityMap_Admin` — the last of which
+     constructs `BL_EntityMap_Manager`, wiring its AJAX + asset hooks);
    - hooks `admin_menu` at **priority 9** so the top-level menu exists before WP
      builds CPT submenus (priority 10) that attach to it.
 5. **Activation** (`bl_ai_activate`): calls `$registry->activate()` (each tool
@@ -41,8 +42,9 @@ All under `includes/tools/entity-maps/`:
 | Class | File | Instantiated? | Role |
 |-------|------|:-------------:|------|
 | `BL_AI_Tool_EntityMaps` | `class-bl-ai-tool-entity-maps.php` | ✓ | The module. Wires the classes below into the BL AI Tools menu and adds the "Entity Maps" tabbed hub submenu. `require`s its own feature classes. |
-| `BL_EntityMap_Store` | `class-bl-entitymap-store.php` | static | The single point that reads entities out of the DB and normalises them to the `entitymap.json` shape. Owns vocabularies, URL normalisation, caching, `next_entity_id()`. |
-| `BL_EntityMap_CPT` | `class-bl-entitymap-cpt.php` | ✓ | Registers the `bl_entity` CPT (nested under the BL AI Tools menu via `show_in_menu`), the three meta boxes, save/sanitise, columns & ordering, the vanilla-JS repeater. |
+| `BL_EntityMap_Store` | `class-bl-entitymap-store.php` | static | The single point that **reads and writes** entities. Reads/normalises to the `entitymap.json` shape (`build_entity()`); reads raw editable meta for the editor (`get_entity_for_edit()`); writes/sanitises meta for both editors (`save_entity_meta()` + `sanitize_chunks/relations()`). Owns vocabularies, URL normalisation, caching, and monotonic `next_entity_id()`. |
+| `BL_EntityMap_CPT` | `class-bl-entitymap-cpt.php` | ✓ | Registers the `bl_entity` CPT (`show_in_menu => false` — hidden; the Manage Entities screen is the way in, but `show_ui` stays true so the classic per-post editor still works as an internal fallback), the three meta boxes, save (via the shared `Store::save_entity_meta()`), columns & ordering, the vanilla-JS repeater. |
+| `BL_EntityMap_Manager` | `class-bl-entitymap-manager.php` | ✓ | The **Manage Entities** master–detail screen (default hub tab) and its AJAX endpoints (`bl_em_save_entity` / `_delete_entity` / `_search_pages`). Upserts `bl_entity` posts through the same `Store` write path as the classic editor, then flushes + regenerates. Assets: `assets/manage.{js,css}`. |
 | `BL_EntityMap_Generator` | `class-bl-entitymap-generator.php` | ✓ | Assembles the document, renders JSON + HTML, registers rewrites + query vars, serves the dynamic endpoints, writes both static files. |
 | `BL_EntityMap_Schema` | `class-bl-entitymap-schema.php` | ✓ | Hooks Yoast's `wpseo_schema_*` filters to enrich the Organization node and inject per-page nodes. Only attaches when enabled. |
 | `BL_EntityMap_Importer` | `class-bl-entitymap-importer.php` | static | Imports/upserts entities from a decoded `entitymap.json`, and validates a document as a dry run. |

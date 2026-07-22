@@ -82,8 +82,10 @@ class BL_EntityMap_CPT {
 			),
 			'public'       => false,
 			'show_ui'      => true,
-			// Nest "All Entities" / "Add New" under the shared BL AI Tools menu.
-			'show_in_menu' => BL_AI_Tools_Registry::MENU_SLUG,
+			// Hidden from the menu: the "Manage Entities" screen is the way in.
+			// show_ui stays true so the classic per-post editor still works as an
+			// internal fallback via a direct URL, but it is not advertised.
+			'show_in_menu' => false,
 			'supports'     => array( 'title', 'editor', 'page-attributes' ),
 			'has_archive'  => false,
 			'rewrite'      => false,
@@ -325,57 +327,19 @@ class BL_EntityMap_CPT {
 			update_post_meta( $post_id, '_bl_entity_id', BL_EntityMap_Store::next_entity_id() );
 		}
 
-		$this->save_text( $post_id, '_bl_type', 'bl_type' );
-		$this->save_text( $post_id, '_bl_alternate_name', 'bl_alternate_name' );
-		$this->save_text( $post_id, '_bl_canonical_label', 'bl_canonical_label' );
-		$this->save_text( $post_id, '_bl_maturity', 'bl_maturity' );
-
-		update_post_meta( $post_id, '_bl_same_as', isset( $_POST['bl_same_as'] ) ? esc_url_raw( $_POST['bl_same_as'] ) : '' );
-		update_post_meta( $post_id, '_bl_page_url', isset( $_POST['bl_page_url'] ) ? esc_url_raw( $_POST['bl_page_url'] ) : '' );
-
-		update_post_meta( $post_id, '_bl_chunks', $this->sanitize_chunks( isset( $_POST['bl_chunks'] ) ? (array) $_POST['bl_chunks'] : array() ) );
-		update_post_meta( $post_id, '_bl_relations', $this->sanitize_relations( isset( $_POST['bl_relations'] ) ? (array) $_POST['bl_relations'] : array() ) );
-	}
-
-	private function save_text( $post_id, $meta, $field ) {
-		update_post_meta( $post_id, $meta, isset( $_POST[ $field ] ) ? sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) : '' );
-	}
-
-	private function sanitize_chunks( $rows ) {
-		$clean = array();
-		foreach ( $rows as $row ) {
-			$text = isset( $row['text'] ) ? sanitize_textarea_field( wp_unslash( $row['text'] ) ) : '';
-			if ( $text === '' ) {
-				continue;
-			}
-			$clean[] = array(
-				'chunkId'      => isset( $row['chunkId'] ) ? sanitize_text_field( $row['chunkId'] ) : '',
-				'text'         => $text,
-				'sourceUrl'    => isset( $row['sourceUrl'] ) ? esc_url_raw( wp_unslash( $row['sourceUrl'] ) ) : '',
-				'pageTitle'    => isset( $row['pageTitle'] ) ? sanitize_text_field( wp_unslash( $row['pageTitle'] ) ) : '',
-				'contentType'  => isset( $row['contentType'] ) ? sanitize_text_field( $row['contentType'] ) : '',
-				'audienceType' => isset( $row['audienceType'] ) ? sanitize_text_field( $row['audienceType'] ) : '',
-			);
-		}
-		return array_values( $clean );
-	}
-
-	private function sanitize_relations( $rows ) {
-		$clean = array();
-		foreach ( $rows as $row ) {
-			$predicate = isset( $row['predicate'] ) ? sanitize_text_field( $row['predicate'] ) : '';
-			$target    = isset( $row['targetId'] ) ? sanitize_text_field( $row['targetId'] ) : '';
-			if ( $predicate === '' || $target === '' ) {
-				continue;
-			}
-			$clean[] = array(
-				'predicate'  => $predicate,
-				'targetId'   => $target,
-				'confidence' => isset( $row['confidence'] ) ? sanitize_text_field( $row['confidence'] ) : '',
-				'condition'  => isset( $row['condition'] ) ? sanitize_text_field( wp_unslash( $row['condition'] ) ) : '',
-			);
-		}
-		return array_values( $clean );
+		// Unslash once, then hand off to the shared writer (also used by the
+		// Manage Entities AJAX save) so both paths sanitise identically.
+		$in = wp_unslash( $_POST );
+		BL_EntityMap_Store::save_entity_meta( $post_id, array(
+			'type'            => isset( $in['bl_type'] ) ? $in['bl_type'] : '',
+			'alternate_name'  => isset( $in['bl_alternate_name'] ) ? $in['bl_alternate_name'] : '',
+			'canonical_label' => isset( $in['bl_canonical_label'] ) ? $in['bl_canonical_label'] : '',
+			'same_as'         => isset( $in['bl_same_as'] ) ? $in['bl_same_as'] : '',
+			'maturity'        => isset( $in['bl_maturity'] ) ? $in['bl_maturity'] : '',
+			'page_url'        => isset( $in['bl_page_url'] ) ? $in['bl_page_url'] : '',
+			'chunks'          => isset( $in['bl_chunks'] ) ? $in['bl_chunks'] : array(),
+			'relations'       => isset( $in['bl_relations'] ) ? $in['bl_relations'] : array(),
+		) );
 	}
 
 	/* ------------------------------------------------------------------ */

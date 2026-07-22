@@ -341,10 +341,13 @@ class BL_EntityMap_Store {
 		return untrailingslashit( $base !== '' ? $base : home_url() );
 	}
 
+	/** Option holding the monotonic entity-id high-water mark. */
+	const SEQ_OPTION = 'bl_em_entity_seq';
+
 	/**
-	 * Next available e_NNN entity id.
+	 * Highest e_NNN sequence number currently stored in the DB (0 if none).
 	 */
-	public static function next_entity_id() {
+	private static function max_existing_seq() {
 		global $wpdb;
 		$ids = $wpdb->get_col( $wpdb->prepare(
 			"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s",
@@ -357,8 +360,143 @@ class BL_EntityMap_Store {
 				$max = max( $max, (int) $m[1] );
 			}
 		}
+		return $max;
+	}
 
-		return sprintf( 'e_%03d', $max + 1 );
+	/**
+	 * Raise the monotonic id counter to at least the highest id in the DB.
+	 *
+	 * Call after any path that writes _bl_entity_id directly (e.g. the importer)
+	 * so a later allocation can never collide with or reuse an existing id.
+	 */
+	public static function reconcile_seq() {
+		$seq = max( (int) get_option( self::SEQ_OPTION, 0 ), self::max_existing_seq() );
+		update_option( self::SEQ_OPTION, $seq );
+	}
+
+	/**
+	 * Next available e_NNN entity id.
+	 *
+	 * Backed by a monotonic high-water mark (self::SEQ_OPTION) so an id is never
+	 * reused: deleting the highest-numbered entity does not free its id for the
+	 * next new one. The counter is reconciled with the DB on every allocation, so
+	 * it also stays correct after an import that writes ids directly.
+	 */
+	public static function next_entity_id() {
+		self::reconcile_seq();
+		$seq = (int) get_option( self::SEQ_OPTION, 0 ) + 1;
+		update_option( self::SEQ_OPTION, $seq );
+		return sprintf( 'e_%03d', $seq );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Writing (shared by the classic CPT editor and the Manage Entities screen,
+	 * so both sanitise and persist identically — one source of truth for saves
+	 * as well as reads).
+	 *
+	 * Callers must pass values already unslashed (e.g. wp_unslash( $_POST )); the
+	 * sanitisers below do not unslash, so they are safe for both $_POST and
+	 * JSON-decoded input.
+	 * ------------------------------------------------------------------- */
+
+	/**
+	 * Persist an entity's meta fields (NOT the post title/content — the caller
+	 * owns the WP_Post). Reads editable input, writes the _bl_* meta keys.
+	 *
+	 * @param int   $post_id
+	 * @param array $in Keys: type, alternate_name, canonical_label, same_as,
+	 *                  maturity, page_url, chunks[], relations[].
+	 */
+	public static function save_entity_meta( $post_id, array $in ) {
+		$type = isset( $in['type'] ) && $in['type'] !== '' ? $in['type'] : 'Concept';
+
+		update_post_meta( $post_id, '_bl_type', sanitize_text_field( $type ) );
+		update_post_meta( $post_id, '_bl_alternate_name', sanitize_text_field( isset( $in['alternate_name'] ) ? $in['alternate_name'] : '' ) );
+		update_post_meta( $post_id, '_bl_canonical_label', sanitize_text_field( isset( $in['canonical_label'] ) ? $in['canonical_label'] : '' ) );
+		update_post_meta( $post_id, '_bl_maturity', sanitize_text_field( isset( $in['maturity'] ) ? $in['maturity'] : '' ) );
+		update_post_meta( $post_id, '_bl_same_as', isset( $in['same_as'] ) ? esc_url_raw( $in['same_as'] ) : '' );
+		update_post_meta( $post_id, '_bl_page_url', isset( $in['page_url'] ) ? esc_url_raw( $in['page_url'] ) : '' );
+		update_post_meta( $post_id, '_bl_chunks', self::sanitize_chunks( isset( $in['chunks'] ) ? (array) $in['chunks'] : array() ) );
+		update_post_meta( $post_id, '_bl_relations', self::sanitize_relations( isset( $in['relations'] ) ? (array) $in['relations'] : array() ) );
+	}
+
+	/** Sanitise chunk rows. Empty-text rows are dropped. */
+	public static function sanitize_chunks( $rows ) {
+		$clean = array();
+		foreach ( (array) $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$text = isset( $row['text'] ) ? sanitize_textarea_field( $row['text'] ) : '';
+			if ( $text === '' ) {
+				continue;
+			}
+			$clean[] = array(
+				'chunkId'      => isset( $row['chunkId'] ) ? sanitize_text_field( $row['chunkId'] ) : '',
+				'text'         => $text,
+				'sourceUrl'    => isset( $row['sourceUrl'] ) ? esc_url_raw( $row['sourceUrl'] ) : '',
+				'pageTitle'    => isset( $row['pageTitle'] ) ? sanitize_text_field( $row['pageTitle'] ) : '',
+				'contentType'  => isset( $row['contentType'] ) ? sanitize_text_field( $row['contentType'] ) : '',
+				'audienceType' => isset( $row['audienceType'] ) ? sanitize_text_field( $row['audienceType'] ) : '',
+			);
+		}
+		return array_values( $clean );
+	}
+
+	/** Sanitise relation rows. Rows missing a predicate or target are dropped. */
+	public static function sanitize_relations( $rows ) {
+		$clean = array();
+		foreach ( (array) $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$predicate = isset( $row['predicate'] ) ? sanitize_text_field( $row['predicate'] ) : '';
+			$target    = isset( $row['targetId'] ) ? sanitize_text_field( $row['targetId'] ) : '';
+			if ( $predicate === '' || $target === '' ) {
+				continue;
+			}
+			$clean[] = array(
+				'predicate'  => $predicate,
+				'targetId'   => $target,
+				'confidence' => isset( $row['confidence'] ) ? sanitize_text_field( $row['confidence'] ) : '',
+				'condition'  => isset( $row['condition'] ) ? sanitize_text_field( $row['condition'] ) : '',
+			);
+		}
+		return array_values( $clean );
+	}
+
+	/**
+	 * Read one entity's RAW, editable meta (unlike build_entity(), which returns
+	 * the normalised output shape with empties dropped and condition remapped to
+	 * context). Used to populate the editor. Returns null if the post is missing
+	 * or not a bl_entity.
+	 *
+	 * @param int $post_id
+	 * @return array|null
+	 */
+	public static function get_entity_for_edit( $post_id ) {
+		$post = get_post( $post_id );
+		if ( ! $post || $post->post_type !== self::CPT ) {
+			return null;
+		}
+
+		$chunks = get_post_meta( $post_id, '_bl_chunks', true );
+		$rels   = get_post_meta( $post_id, '_bl_relations', true );
+
+		return array(
+			'postId'          => $post_id,
+			'entityId'        => get_post_meta( $post_id, '_bl_entity_id', true ),
+			'name'            => $post->post_title,
+			'description'     => $post->post_content,
+			'type'            => get_post_meta( $post_id, '_bl_type', true ) ?: 'Concept',
+			'alternate_name'  => get_post_meta( $post_id, '_bl_alternate_name', true ),
+			'canonical_label' => get_post_meta( $post_id, '_bl_canonical_label', true ),
+			'same_as'         => get_post_meta( $post_id, '_bl_same_as', true ),
+			'maturity'        => get_post_meta( $post_id, '_bl_maturity', true ),
+			'page_url'        => get_post_meta( $post_id, '_bl_page_url', true ),
+			'chunks'          => is_array( $chunks ) ? array_values( $chunks ) : array(),
+			'relations'       => is_array( $rels ) ? array_values( $rels ) : array(),
+		);
 	}
 
 	/**

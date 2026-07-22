@@ -22,6 +22,9 @@ class BL_EntityMap_Admin {
 
 	const GROUP = 'bl_em_settings';
 
+	/** @var BL_EntityMap_Manager */
+	private $manager;
+
 	private $options = array(
 		'bl_em_publisher_name'   => 'text',
 		'bl_em_publisher_url'    => 'url',
@@ -39,6 +42,7 @@ class BL_EntityMap_Admin {
 	);
 
 	public function __construct() {
+		$this->manager = new BL_EntityMap_Manager();
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'handle_tools' ) );
 		add_action( 'admin_init', array( $this, 'handle_download' ) );
@@ -92,14 +96,15 @@ class BL_EntityMap_Admin {
 
 	public function render_hub() {
 		$tabs = array(
+			'manage'   => 'Manage Entities',
 			'files'    => 'Files',
 			'import'   => 'Import',
 			'settings' => 'Settings',
 			'help'     => 'Help',
 		);
-		$active = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'files';
+		$active = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'manage';
 		if ( ! isset( $tabs[ $active ] ) ) {
-			$active = 'files';
+			$active = 'manage';
 		}
 		?>
 		<div class="wrap">
@@ -112,6 +117,9 @@ class BL_EntityMap_Admin {
 			<div style="margin-top:1.5em;">
 				<?php
 				switch ( $active ) {
+					case 'files':
+						$this->tab_files();
+						break;
 					case 'import':
 						$this->tab_import();
 						break;
@@ -122,7 +130,7 @@ class BL_EntityMap_Admin {
 						$this->tab_help();
 						break;
 					default:
-						$this->tab_files();
+						$this->manager->render();
 				}
 				?>
 			</div>
@@ -585,7 +593,7 @@ JS;
 				<h2>Key words (glossary)</h2>
 				<table class="widefat striped">
 					<tbody>
-						<tr><td style="width:170px;"><strong>Entity</strong></td><td>One &ldquo;thing&rdquo; we&rsquo;re describing &mdash; a product, service, concept, or research report. Each lives under <strong>BL AI Tools &rarr; All Entities</strong>.</td></tr>
+						<tr><td style="width:170px;"><strong>Entity</strong></td><td>One &ldquo;thing&rdquo; we&rsquo;re describing &mdash; a product, service, concept, or research report. Curate them all on the <strong>Manage Entities</strong> tab.</td></tr>
 						<tr><td><strong>Type</strong></td><td>What kind of thing it is: Organization, Service, Platform, Concept, ProprietaryTerm, Metric, etc.</td></tr>
 						<tr><td><strong>Evidence chunk</strong></td><td>A short quote (1&ndash;5 sentences) from our site that backs up the entity, with a link to the source page.</td></tr>
 						<tr><td><strong>Relation</strong></td><td>A link between two entities, e.g. BrightLocal <em>OFFERS</em> Citation Builder.</td></tr>
@@ -598,10 +606,10 @@ JS;
 				<h2>Everyday tasks</h2>
 				<h3>Edit or add an entity</h3>
 				<ol>
-					<li>Go to <strong>BL AI Tools &rarr; All Entities</strong> (or <strong>Add New</strong>).</li>
-					<li><strong>Title</strong> = the name. <strong>Body</strong> = the description.</li>
-					<li><strong>Entity Details</strong>: the Type, an optional verified <em>sameAs</em>, and <em>Attach to page URL</em>.</li>
-					<li>Add <strong>Evidence Chunks</strong> and <strong>Relations</strong> as needed, then <strong>Update</strong>. Outputs refresh automatically.</li>
+					<li>Open the <a href="<?php echo esc_url( self::tab_url( 'manage' ) ); ?>">Manage Entities</a> tab.</li>
+					<li>Click an entity in the left-hand list to edit it, or <strong>＋ Add entity</strong> to create one.</li>
+					<li>Set the <strong>Name</strong> and <strong>Description</strong>, then the <strong>Type</strong>, an optional verified <em>sameAs</em>, and the page to <em>Attach to</em> (search by title).</li>
+					<li>Add <strong>Evidence chunks</strong> and <strong>Relations</strong> as needed, then <strong>Save entity</strong>. The files regenerate automatically.</li>
 				</ol>
 				<h3>Upload a whole new map</h3>
 				<ol>
