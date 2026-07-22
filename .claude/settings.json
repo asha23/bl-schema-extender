@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(composer validate)",
+      "Bash(composer dump-autoload)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(php -l:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}

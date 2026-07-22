@@ -1,6 +1,6 @@
 {
-  "name": "asha23/bl-schema-extender",
-  "description": "Extends schema markup.",
+  "name": "asha23/bl-ai-tools",
+  "description": "BrightLocal AI Tools — EntityMap management and Schema.org enrichment.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later"
 }
