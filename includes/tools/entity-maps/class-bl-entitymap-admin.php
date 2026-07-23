@@ -238,6 +238,13 @@ class BL_EntityMap_Admin {
 
 		<form method="post" style="margin:1em 0;">
 			<?php wp_nonce_field( 'bl_em_tool', 'bl_em_tool_nonce' ); ?>
+<p style="margin:0 0 1em;">
+				<?php if ( ! BL_EntityMap_Sitemap::yoast_active() ) : ?>
+					<span class="dashicons dashicons-info-outline" style="color:#787c82;"></span> <strong>XML sitemap:</strong> requires <strong>Yoast SEO</strong> (not detected). Everything else works without it.
+				<?php elseif ( $enabled ) : ?>
+					<span class="dashicons dashicons-yes" style="color:#008a20;"></span> <strong>XML sitemap</strong> registered &mdash; <a href="<?php echo esc_url( home_url( '/entitymap-sitemap.xml' ) ); ?>" target="_blank" rel="noopener">entitymap-sitemap.xml</a>, listed in <a href="<?php echo esc_url( home_url( '/sitemap_index.xml' ) ); ?>" target="_blank" rel="noopener">sitemap_index.xml</a>. Lists <code>entitymap.html</code> only.
+				<?php endif; ?>
+			</p>
 			<button class="button button-primary" name="bl_em_tool" value="regenerate">Regenerate now</button>
 			<span class="description" style="margin-left:8px;">Rebuild the entitymap files<?php echo $llms_on ? ' and llms.txt' : ''; ?> from the current entities.</span>
 		</form>

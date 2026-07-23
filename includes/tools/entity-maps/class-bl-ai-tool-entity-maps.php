@@ -20,6 +20,7 @@ require_once __DIR__ . '/class-bl-entitymap-schema.php';
 require_once __DIR__ . '/class-bl-entitymap-importer.php';
 require_once __DIR__ . '/class-bl-entitymap-backups.php';
 require_once __DIR__ . '/class-bl-entitymap-manager.php';
+require_once __DIR__ . '/class-bl-entitymap-sitemap.php';
 require_once __DIR__ . '/class-bl-entitymap-admin.php';
 
 class BL_AI_Tool_EntityMaps extends BL_AI_Tool {
@@ -56,6 +57,7 @@ class BL_AI_Tool_EntityMaps extends BL_AI_Tool {
 		new BL_EntityMap_CPT();
 		new BL_EntityMap_Generator();
 		new BL_EntityMap_Schema();
+		new BL_EntityMap_Sitemap();
 		$this->admin = new BL_EntityMap_Admin();
 	}
 

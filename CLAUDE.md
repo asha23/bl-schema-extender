@@ -36,5 +36,5 @@ composer.json                   type: wordpress-plugin
 ## Gotchas
 
 - Renaming the plugin folder or main file deactivates the plugin in WordPress — it must be reactivated, which re-flushes rewrite rules so `/entitymap.json` resolves.
-- Schema output depends on **Yoast SEO** being active; the `BL_EntityMap_Schema` filters hook Yoast's schema pipeline.
+- **Yoast SEO is a feature-level dependency, not plugin-wide.** Two features need it: the XML sitemap (`BL_EntityMap_Sitemap` — registers `/entitymap-sitemap.xml`) and the (currently hidden) schema mapping (`BL_EntityMap_Schema`). Both no-op gracefully when Yoast is absent — the core (Manage Entities, `entitymap.json`/`.html`, `llms.txt`) works without it. Do **not** add a plugin-wide `Requires Plugins` header; gate at runtime and signpost in the UI instead.
 - No build step and no automated test suite — this is plain PHP loaded directly by WordPress.
