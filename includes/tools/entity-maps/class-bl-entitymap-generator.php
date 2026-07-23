@@ -22,6 +22,7 @@ class BL_EntityMap_Generator {
 	const CACHE_KEY      = 'bl_entitymap_json_v2';
 	const QUERY_VAR      = 'bl_entitymap';       // json
 	const QUERY_VAR_HTML = 'bl_entitymap_html';  // html
+	const QUERY_VAR_LLMS = 'bl_entitymap_llms';  // llms.txt
 
 	public function __construct() {
 		add_action( 'init', array( $this, 'add_rewrite' ) );
@@ -38,11 +39,13 @@ class BL_EntityMap_Generator {
 	public function add_rewrite() {
 		add_rewrite_rule( '^entitymap\.json$', 'index.php?' . self::QUERY_VAR . '=1', 'top' );
 		add_rewrite_rule( '^entitymap\.html$', 'index.php?' . self::QUERY_VAR_HTML . '=1', 'top' );
+		add_rewrite_rule( '^llms\.txt$', 'index.php?' . self::QUERY_VAR_LLMS . '=1', 'top' );
 	}
 
 	public function query_vars( $vars ) {
 		$vars[] = self::QUERY_VAR;
 		$vars[] = self::QUERY_VAR_HTML;
+		$vars[] = self::QUERY_VAR_LLMS;
 		return $vars;
 	}
 
@@ -561,19 +564,27 @@ class BL_EntityMap_Generator {
 	public function maybe_serve() {
 		$is_json = (bool) get_query_var( self::QUERY_VAR );
 		$is_html = (bool) get_query_var( self::QUERY_VAR_HTML );
+		$is_llms = (bool) get_query_var( self::QUERY_VAR_LLMS );
 
-		if ( ! $is_json && ! $is_html ) {
+		if ( ! $is_json && ! $is_html && ! $is_llms ) {
 			return;
 		}
 
-		if ( get_option( 'bl_em_enable_json', '1' ) !== '1' ) {
+		// Each output honours its own enable toggle. These dynamic endpoints are
+		// the fallback whenever the static file isn't on disk (webroot not
+		// writable, git-ignored + fresh deploy, etc.) — llms.txt now has one too.
+		if ( ( $is_json || $is_html ) && get_option( 'bl_em_enable_json', '1' ) !== '1' ) {
+			status_header( 404 );
+			exit;
+		}
+		if ( $is_llms && get_option( 'bl_em_enable_llms', '0' ) !== '1' ) {
 			status_header( 404 );
 			exit;
 		}
 
 		// Freshness: a real Last-Modified so crawlers can revalidate cheaply and
-		// re-fetch only when the map actually changes. (The static files get this
-		// for free from the filesystem; this covers the dynamic fallback.)
+		// re-fetch only when the map actually changes. (Static files get this for
+		// free from the filesystem; this covers the dynamic fallback.)
 		$last = $this->last_modified_ts();
 		header( 'X-Robots-Tag: index, follow' );
 		header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s', $last ) . ' GMT' );
@@ -586,7 +597,10 @@ class BL_EntityMap_Generator {
 			exit;
 		}
 
-		if ( $is_html ) {
+		if ( $is_llms ) {
+			header( 'Content-Type: text/plain; charset=utf-8' );
+			echo $this->get_llms(); // phpcs:ignore WordPress.Security.EscapeOutput
+		} elseif ( $is_html ) {
 			header( 'Content-Type: text/html; charset=utf-8' );
 			echo $this->get_html(); // phpcs:ignore WordPress.Security.EscapeOutput
 		} else {

@@ -4,6 +4,13 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.22.0
+- **`llms.txt` now has a dynamic fallback endpoint**, like `entitymap.json`/`.html`.
+  Previously it was static-file-only, so it 404'd whenever the webroot wasn't
+  writable (files served dynamically). It's now served by WordPress when the
+  static file isn't on disk (still behind the "Generate llms.txt" toggle).
+  *Requires a rewrite flush on deploy (reactivate or `wp rewrite flush`).*
+
 ## 2.21.0
 - `entitymap.html` now shows each evidence chunk's **content type** and
   **audience** as small labels, so the human page reflects those fields (they

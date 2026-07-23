@@ -18,11 +18,11 @@
 | 3 | P1 | Add the entity map to `llms.txt` | ✅ **Done** (v2.11.0) — plugin now **generates the whole file** |
 | 4 | P1 | Site-wide `<head>` alternate link to `entitymap.json` | ✅ **Done** (v2.9.0) |
 | 5 | P2 | Canonical + self alternate link on `entitymap.html` | ✅ **Done** (v2.9.0) |
-| 6 | P2 | Visible internal link to `/entitymap.html` (e.g. footer) | 🙅 **Web/theme team** (not the plugin) |
+| 6 | P2 | Visible internal link to `/entitymap.html` (e.g. footer) | ✅ **Done** (footer link added) |
 | 7 | P2 | Reconcile research naming across llms.txt / map / site | ⏳ **Partly auto-resolved** — see note |
 | 8 | P3 | `Last-Modified` header (+ sitemap `<lastmod>`) | ✅ **Done** — header v2.12.0, sitemap `<lastmod>` v2.17.0 |
 | 9 | P3 — enhancement | Expand the JSON-LD beyond a bare `WebPage` | ✅ **Done** (v2.12.0) |
-| 10 | P3 | Tidy robots.txt (`User-agent: *` blocks) | 🙅 **Web/server team** (not the plugin) |
+| 10 | P3 | Tidy robots.txt (`User-agent: *` blocks) | ✅ **Done** (robots.txt tidied) |
 | 11 | P3 — decision | Training-crawler carve-out for the entity map | 🙅 **Web team + policy sign-off** |
 | 12 | Final | Verify everything (see §12) | ⏳ **Pending** (after deploy + config) |
 

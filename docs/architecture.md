@@ -96,19 +96,25 @@ Invalidation path:
 `regenerate()`, which clears the JSON transient, rebuilds from a forced
 (uncached) read, and rewrites both static files.
 
-## The two output endpoints
+## The output endpoints
 
 `BL_EntityMap_Generator` publishes each document **two ways**:
 
 1. **Static files**, written to the webroot on every change
-   (`dirname(ABSPATH)/entitymap.json` and `…/entitymap.html`, both filterable via
-   `bl_entitymap_path` / `bl_entitymap_html_path`). Served directly by the web
-   server — fast, no PHP.
-2. **Dynamic WP endpoints** as a fallback when the webroot isn't writable. Two
-   rewrite rules map `^entitymap\.json$` and `^entitymap\.html$` to internal
-   query vars (`bl_entitymap`, `bl_entitymap_html`); `maybe_serve()` on
-   `template_redirect` renders and echoes the content with the right
-   `Content-Type` and `X-Robots-Tag: index, follow`.
+   (`dirname(ABSPATH)/entitymap.json`, `…/entitymap.html`, and `…/llms.txt` when
+   enabled; filterable via `bl_entitymap_path` / `bl_entitymap_html_path` /
+   `bl_entitymap_llms_path`). Served directly by the web server — fast, no PHP.
+2. **Dynamic WP endpoints** as a fallback when the webroot isn't writable. Rewrite
+   rules map `^entitymap\.json$`, `^entitymap\.html$`, and `^llms\.txt$` to internal
+   query vars (`bl_entitymap`, `bl_entitymap_html`, `bl_entitymap_llms`);
+   `maybe_serve()` on `template_redirect` renders and echoes the content with the
+   right `Content-Type`, `Last-Modified` + `Cache-Control` (with `304` handling),
+   and `X-Robots-Tag: index, follow`. Each output honours its own enable toggle
+   (`bl_em_enable_json` for json/html, `bl_em_enable_llms` for llms.txt).
+
+> **Adding/altering a rewrite rule requires a rewrite flush** — done on activation
+> (`bl_ai_activate`). After deploying a change to these rules, reactivate the
+> plugin or run `wp rewrite flush`, or the new path 404s.
 
 `regenerate()` refuses to overwrite existing maps with an **empty** one — if the
 DB has no entities it returns early, preserving any seed file the importer reads.
