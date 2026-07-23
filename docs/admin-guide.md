@@ -1,33 +1,56 @@
 # Admin guide
 
 Everything lives under the top-level **BL AI Tools** menu (owned by
-`BL_AI_Tools_Registry`, slug `bl-ai-tools`, capability `edit_posts`):
+`BL_AI_Tools_Registry`, slug `bl-ai-tools`, capability `edit_posts`, positioned
+just below **Tools**, with a custom icon from `assets/icon.svg`):
 
 ```
 BL AI Tools
 ├── Dashboard        Cards for each registered tool (the registry's landing page)
-├── Entity Maps      The tool's tabbed hub — Files · Import · Settings · Help
-├── All Entities     bl_entity CPT list (nested here via show_in_menu)
-└── Add New Entity   bl_entity CPT editor
+└── Entity Maps      The tool's tabbed hub — Manage Entities · Files · Import · Settings · Help
 ```
+
+The `bl_entity` CPT is registered with `show_in_menu => false`, so **All Entities /
+Add New are not in the menu**. The classic per-post editor still exists (reachable
+by direct URL) as an internal fallback, but curation happens on **Manage Entities**.
 
 The **Entity Maps** hub is a single page (`bl-em-entity-maps`, `manage_options`)
 rendered by `BL_EntityMap_Admin::render_hub()`, which switches on `?tab=` between
-four tabs. The CPT screens (All Entities / Add New) are standard WordPress CPT
-screens, nested under the menu — that's where entities are actually edited.
+five tabs. **Manage Entities is the default.**
 
-## Files tab (default)
+## Manage Entities tab (default)
 
-The file-management hub for the two published files in the webroot
-(`corpblob-roots/public/`):
+The primary editor — a dependency-free master–detail screen (`BL_EntityMap_Manager`,
+assets in `assets/manage.{js,css}`):
 
-- **Per-file cards** for `entitymap.json` and `entitymap.html`: live URL,
-  last-built time (site timezone + relative), size, and **View** / **Download**
-  buttons. Downloads stream through a nonce + `manage_options`-gated
-  `handle_download()` action (`bl_em_dl=json|html|backup`).
+- **Left:** searchable, type-filterable list of every entity, with type badges,
+  `e_NNN`, a ⚠ marker for issues, and **＋ Add entity**.
+- **Right:** the full editor — name, description, type, alternate/canonical name,
+  **sameAs** (with a **Find on Wikidata** typeahead), **Attach to page** (a page
+  search), plus the evidence-chunk and relation repeaters (relation targets are a
+  live dropdown of the other entities).
+- **Save/Delete** via AJAX (`bl_em_save_entity` / `bl_em_delete_entity`,
+  nonce + `manage_options`); a saving overlay while in flight; a live validation
+  banner. Each save/delete **snapshots a backup**, then regenerates the outputs.
+
+All entities are stored as `bl_entity` posts through the shared
+`BL_EntityMap_Store::save_entity_meta()` path, so this and the classic editor
+sanitise/store identically.
+
+## Files tab
+
+The file-management hub for the published outputs in the webroot:
+
+- **Per-file cards** for `entitymap.json`, `entitymap.html`, and — when *Generate
+  llms.txt* is on — `llms.txt`: live URL, last-built time, size, **View** /
+  **Download**. Downloads stream through a nonce + `manage_options`-gated
+  `handle_download()` (`bl_em_dl=json|html|llms|backup`).
 - **Static-write status** (`bl_em_static_ok`): *writable ✓ (served directly)* /
   *not writable (served dynamically)* / *not yet generated*.
-- **Regenerate now** — rebuilds both files from the current entities.
+- **llms.txt status** — a pointer to Settings when generation is off.
+- **XML sitemap status** — "registered ✓ (with links)" when Yoast is active, or
+  "requires Yoast SEO" when not.
+- **Regenerate now** — rebuilds all outputs from the current entities.
 - **Backups & restore** — see below.
 - **Preview** — read-only textarea of the current `entitymap.json`.
 
@@ -35,20 +58,17 @@ The file-management hub for the two published files in the webroot
 
 `BL_EntityMap_Backups` keeps timestamped snapshots of `entitymap.json` in a
 private, listing-guarded directory: `uploads/bl-ai-tools/entitymap-backups/`
-(named `entitymap-YYYYMMDD-HHMMSS.json`, with an optional `.meta` reason sidecar).
+(provisioned on activation; named `entitymap-YYYYMMDD-HHMMSS.json`, with an
+optional `.meta` reason sidecar).
 
-- A snapshot is taken **automatically before every destructive change** — a
-  webroot import, an uploaded "verify & import", and before a restore. It is
-  **not** taken on ordinary regenerates/saves, so backups stay meaningful.
+- A snapshot is taken **automatically before every change** — each Manage Entities
+  save/delete, a webroot import, an uploaded "verify & import", and before a
+  restore.
 - The Files tab lists snapshots (newest first) with **Restore**, **Download**,
-  and **Delete**.
-- **Restore** re-imports that snapshot into the database (full sync) and
-  regenerates the files — a true undo of the whole map, not just the file on
-  disk. The current state is itself snapshotted first, so a restore is reversible.
+  **Delete**.
+- **Restore** re-imports that snapshot (full sync) and regenerates — a true undo of
+  the whole map. The current state is snapshotted first, so a restore is reversible.
 - Retention is `bl_em_backup_keep` (default **10**); older snapshots are pruned.
-
-This is what preserves an uploaded map: uploading/importing a new one archives the
-previous published `entitymap.json` first, so you can always revert.
 
 ## Import tab
 
@@ -66,27 +86,29 @@ All tool actions are gated by `manage_options` + the `bl_em_tool` nonce.
 - Upserts each entity **by `entityId`** (idempotent). `find_by_entity_id()`
   includes `trash`, so a previously-removed entity is restored in place rather
   than duplicated.
-- Writes the root/publisher settings from the document; maps chunks + relations
-  back into the flat meta shape (`context.condition` → `condition`); picks
-  `_bl_page_url` via `primary_url()` (first `definition` chunk URL, else first
-  chunk URL).
-- **Full sync (`$replace = true`):** any existing entity **not** in the document
-  is moved to **Trash**. Both import paths run in this mode — always upload the
+- Writes root/publisher settings from the document; maps chunks + relations back
+  into the flat meta shape (`context.condition` → `condition`); picks
+  `_bl_page_url` via `primary_url()`. Reconciles the monotonic id counter
+  (`bl_em_entity_seq`) so later allocations never reuse an imported id.
+- **Full sync (`$replace = true`):** any existing entity **not** in the document is
+  moved to **Trash**. Both import paths run in this mode — always upload the
   *whole* map. (A snapshot is archived first, so this is undoable.)
 
 ### Dry-run validation — `BL_EntityMap_Importer::validate_document()`
 
-Never touches the DB. *Errors:* missing required fields (`entityId`, `@type`,
-`name`, `description`), duplicate `entityId`/`chunkId`, relation to a missing
-entity. *Warnings:* unrecognised `@type`/predicate, invalid `sameAs` URL, empty
-chunk text, incomplete relation. Plus entity/chunk/relation counts.
+Never touches the DB. *Errors:* missing required fields, duplicate
+`entityId`/`chunkId`, relation to a missing entity. *Warnings:* unrecognised
+`@type`/predicate, invalid `sameAs` URL, empty chunk text, incomplete relation.
+(Recognised types/predicates include the built-ins **and** any added under
+Settings → Vocabulary.)
 
 ### Live DB validation — `BL_EntityMap_Admin::validate()`
 
-Runs against the current published entities (forced, uncached): counts; duplicate
+Structural checks against the current published entities: counts; duplicate
 entity/chunk IDs (errors); relations to missing entities (error); entities missing
-a description (warning); Organization-entity count (warns on 0 or >1); and the
-Yoast site-representation prerequisite (warns if not a company).
+a description (warning). The Organization-count and Yoast site-representation
+checks only run when the schema feature is enabled (see below) — they're hidden
+while it is off.
 
 ## Settings tab
 
@@ -94,35 +116,47 @@ Registered under the `bl_em_settings` option group.
 
 ### Publisher & root
 
-| Option | Default | Type | Feeds |
-|--------|---------|------|-------|
-| `bl_em_publisher_name` | `BrightLocal` | text | document `publisher.name`, chunk `publisher` |
-| `bl_em_publisher_url` | `home_url('/')` | url | document `publisher.url` |
-| `bl_em_publisher_sameas` | `''` | url | document `publisher.sameAs` (omitted if blank) |
-| `bl_em_base_url` | `''` | url | schema `@id` base; blank = use this site automatically |
-| `bl_em_version` | `1.0` | text | document `version` |
-| `bl_em_schema_url` | `https://entitymap.org/spec/v1.0` | url | document `schema` |
-| `bl_em_verification` | `self-declared` | text | document `verificationStatus` |
-| `bl_em_profile` | `core` | text | document `profile` |
+| Option | Default | Feeds |
+|--------|---------|-------|
+| `bl_em_publisher_name` | `BrightLocal` | document `publisher.name`, chunk `publisher`, llms.txt title |
+| `bl_em_publisher_url` | canonical base + `/` | document `publisher.url` |
+| `bl_em_publisher_sameas` | `''` | document `publisher.sameAs` / JSON-LD Organization `sameAs` (omitted if blank) |
+| `bl_em_base_url` | `''` | **Canonical base URL** — the base for schema `@id` **and all absolute URLs in the published files** (JSON-LD, canonical/alternate links, llms.txt, sitemap). Blank = use this site. Set to production so files regenerated on staging still emit production URLs. |
+| `bl_em_version` / `bl_em_schema_url` / `bl_em_verification` / `bl_em_profile` | `1.0` / spec URL / `self-declared` / `core` | document root fields |
 
 ### Output
 
 | Option | Default | Controls |
 |--------|:-------:|----------|
-| `bl_em_enable_json` | `1` | Publish `/entitymap.json` + `/entitymap.html` (static write + dynamic endpoints). Off → both 404, no static write. |
-| `bl_em_backup_keep` | `10` | Number of `entitymap.json` snapshots to retain (`int`, absint-sanitised). |
-| `bl_em_enable_schema` | `0` | **Master** switch for injecting EntityMap data into Yoast Schema.org. Off by default. |
-| `bl_em_enable_org` | `1` | (only when master on) Organization enrichment. |
-| `bl_em_enable_perpage` | `1` | (only when master on) Per-page nodes. |
+| `bl_em_enable_json` | `1` | Publish `/entitymap.json` + `/entitymap.html` (static write + dynamic endpoints). Also gates the sitemap. |
+| `bl_em_enable_llms` | `0` | Generate `/llms.txt` from the EntityMap on every change (overwrites any existing file). |
+| `bl_em_backup_keep` | `10` | Snapshots to retain before pruning. |
 
-Booleans are sanitised to `'1'`/`'0'`. Saving Settings triggers
-`maybe_regenerate_after_save()` (detects `page=bl-em-entity-maps` +
-`settings-updated`), which flushes the cache and regenerates immediately.
+### Vocabulary
+
+`bl_em_custom_types` / `bl_em_custom_predicates` (arrays; one-per-line textareas) —
+add recognised entity types and relation predicates without code. Additive only;
+built-ins are always kept and shown read-only. Also extendable via the
+`bl_em_entity_types` / `bl_em_predicates` filters.
+
+### Schema (currently hidden)
+
+The Yoast Schema.org mapping (`bl_em_enable_schema` / `_org` / `_perpage`) is
+hidden behind `BL_EntityMap_Schema::FEATURE_ENABLED` (`false`). The options remain
+registered; the settings, help, and integrity checks reappear if it's flipped on.
+
+Saving Settings triggers `maybe_regenerate_after_save()`, which flushes the cache
+and regenerates immediately.
+
+### Internal options (not user-facing)
+
+`bl_em_static_ok`, `bl_em_llms_ok` (last write status), `bl_em_changed_gmt` (for
+`Last-Modified`), `bl_em_entity_seq` (monotonic id counter).
 
 ## Help tab
 
-`BL_EntityMap_Admin::tab_help()` — the in-admin, end-user guide: what the tool
-does (honest about the files being a curated catalogue and Yoast being the part
-AI/Google read today), a glossary, everyday tasks, the whole-map-upload caveat,
-and a paste-in DevTools snippet that tabulates a page's JSON-LD `@graph` and prints
-`knowsAbout` / `makesOffer` counts. The end-user counterpart to this `docs/` folder.
+`BL_EntityMap_Admin::tab_help()` renders **`docs/help.md`** through the small
+`BL_AI_Markdown` renderer — the doc is the single source of truth, so the in-admin
+help never drifts from the repo. Internal links use `{{tab:*}}` / `{{url:*}}`
+tokens resolved at render time, and a **Latest changes** section is pulled live
+from `docs/CHANGELOG.md`.

@@ -631,83 +631,71 @@ class BL_EntityMap_Admin {
 	 * ------------------------------------------------------------------- */
 
 	private function tab_help() {
-		$json_url = esc_html( home_url( '/entitymap.json' ) );
-		$html_url = esc_html( home_url( '/entitymap.html' ) );
-		$devtools = <<<'JS'
-(() => {
-  const blocks = [...document.querySelectorAll('script[type="application/ld+json"]')]
-    .map(s => { try { return JSON.parse(s.textContent); } catch { return null; } })
-    .filter(Boolean);
-  const graph = blocks.flatMap(b => b['@graph'] || [b]);
-  const org = graph.find(n => [].concat(n['@type']).includes('Organization'));
-  console.table(graph.map(n => ({ type: [].concat(n['@type']).join('/'), name: n.name || '' })));
-  if (org) console.log('knowsAbout:', (org.knowsAbout||[]).length, ' makesOffer:', (org.makesOffer||[]).length);
-})();
-JS;
+		// Single source of truth: render docs/help.md. Tokens below resolve to the
+		// live tab/file URLs so links work without duplicating content in PHP.
+		$file = BL_AI_DIR . 'docs/help.md';
+		if ( ! is_readable( $file ) ) {
+			echo '<p>Help document not found.</p>';
+			return;
+		}
+
+		$md = strtr( (string) file_get_contents( $file ), array(
+			'{{tab:manage}}'   => self::tab_url( 'manage' ),
+			'{{tab:files}}'    => self::tab_url( 'files' ),
+			'{{tab:import}}'   => self::tab_url( 'import' ),
+			'{{tab:settings}}' => self::tab_url( 'settings' ),
+			'{{url:json}}'     => home_url( '/entitymap.json' ),
+			'{{url:html}}'     => home_url( '/entitymap.html' ),
+			'{{url:llms}}'     => home_url( '/llms.txt' ),
+			'{{url:sitemap}}'  => home_url( '/entitymap-sitemap.xml' ),
+			'{{changelog:5}}'  => $this->changelog_excerpt( 5 ),
+		) );
 		?>
-		<div style="max-width:900px;">
-			<p style="font-size:14px;color:#555;max-width:680px;">Curate the entities BrightLocal is known for &mdash; products, services, key concepts, and research &mdash; in one place, and publish them as portable <code>entitymap.json</code> / <code>entitymap.html</code> files.<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?> Optionally, the same data can enrich your Yoast Schema.org markup.<?php endif; ?></p>
-
-			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
-				<h2>What this tool does</h2>
-				<p>It maintains one list of the <strong>things BrightLocal is about</strong> and publishes it:</p>
-				<ol>
-					<li><strong>Files</strong> at <code><?php echo $json_url; ?></code> and <code><?php echo $html_url; ?></code> &mdash; a curated, portable catalogue you control. Manage them under the <a href="<?php echo esc_url( self::tab_url( 'files' ) ); ?>">Files</a> tab.</li>
-					<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?>
-					<li><strong>On-page Schema.org</strong> (via Yoast) &mdash; the structured data Google&rsquo;s Knowledge Graph and AI engines actually read today. <em>Off by default;</em> enable it under <a href="<?php echo esc_url( self::tab_url( 'settings' ) ); ?>">Settings</a>.</li>
-					<?php endif; ?>
-				</ol>
-				<p style="margin-bottom:0;">You edit the list <em>once</em>, here in wp-admin. Both outputs update on their own. You never edit a file by hand.</p>
-			</div>
-
-			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
-				<h2>Key words (glossary)</h2>
-				<table class="widefat striped">
-					<tbody>
-						<tr><td style="width:170px;"><strong>Entity</strong></td><td>One &ldquo;thing&rdquo; we&rsquo;re describing &mdash; a product, service, concept, or research report. Curate them all on the <strong>Manage Entities</strong> tab.</td></tr>
-						<tr><td><strong>Type</strong></td><td>What kind of thing it is: Organization, Service, Platform, Concept, ProprietaryTerm, Metric, etc.</td></tr>
-						<tr><td><strong>Evidence chunk</strong></td><td>A short quote (1&ndash;5 sentences) from our site that backs up the entity, with a link to the source page.</td></tr>
-						<tr><td><strong>Relation</strong></td><td>A link between two entities, e.g. BrightLocal <em>OFFERS</em> Citation Builder.</td></tr>
-						<tr><td><strong>sameAs</strong></td><td>A link to the same thing on an authoritative site (usually Wikidata). Only add one you&rsquo;ve verified. This is the single most useful field for helping AI resolve who/what an entity is.</td></tr>
-					</tbody>
-				</table>
-			</div>
-
-			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
-				<h2>Everyday tasks</h2>
-				<h3>Edit or add an entity</h3>
-				<ol>
-					<li>Open the <a href="<?php echo esc_url( self::tab_url( 'manage' ) ); ?>">Manage Entities</a> tab.</li>
-					<li>Click an entity in the left-hand list to edit it, or <strong>＋ Add entity</strong> to create one.</li>
-					<li>Set the <strong>Name</strong> and <strong>Description</strong>, then the <strong>Type</strong>, an optional verified <em>sameAs</em>, and the page to <em>Attach to</em> (search by title).</li>
-					<li>Add <strong>Evidence chunks</strong> and <strong>Relations</strong> as needed, then <strong>Save entity</strong>. The files regenerate automatically.</li>
-				</ol>
-				<h3>Upload a whole new map</h3>
-				<ol>
-					<li>Go to the <a href="<?php echo esc_url( self::tab_url( 'import' ) ); ?>">Import</a> tab.</li>
-					<li><strong>Verify only</strong> checks a file without changing anything; <strong>Verify &amp; import</strong> loads it if there are zero errors.</li>
-					<li>The current map is backed up first &mdash; undo any time from the <a href="<?php echo esc_url( self::tab_url( 'files' ) ); ?>">Files</a> tab.</li>
-				</ol>
-			</div>
-
-			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
-				<h2>Check it&rsquo;s working</h2>
-				<p><strong>The files:</strong> open <code><?php echo $json_url; ?></code> &mdash; you should see all the entities.</p>
-				<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?>
-				<p><strong>On-page schema</strong> (if enabled): open any page, press <kbd>F12</kbd> &rarr; <strong>Console</strong>, paste this and press Enter:</p>
-				<textarea readonly class="widefat code" rows="9" style="font-family:monospace;font-size:12px;" onclick="this.select()"><?php echo esc_textarea( $devtools ); ?></textarea>
-				<p>To formally validate, paste a page&rsquo;s structured data into <a href="https://validator.schema.org/" target="_blank" rel="noopener">validator.schema.org</a> or <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">Google&rsquo;s Rich Results Test</a>.</p>
-				<?php endif; ?>
-			</div>
-
-			<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?>
-			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
-				<h2>Requirement for Yoast schema</h2>
-				<p style="margin-bottom:0;">The Schema.org output is <strong>off by default</strong> &mdash; enable it under <a href="<?php echo esc_url( self::tab_url( 'settings' ) ); ?>">Settings</a>. Once on, the Organization schema only appears when <strong>Yoast SEO</strong> is active and, under <em>Yoast &rarr; Settings &rarr; Site representation</em>, the site represents an <strong>Organization</strong> with a <strong>name and logo</strong>. The <a href="<?php echo esc_url( self::tab_url( 'import' ) ); ?>">Import</a> tab flags this under Data integrity.</p>
-			</div>
-			<?php endif; ?>
+		<style>
+			.bl-md { max-width: 860px; }
+			.bl-md h2 { margin: 1.6em 0 .4em; padding-top: .6em; border-top: 1px solid #dcdcde; font-size: 1.3em; }
+			.bl-md h2:first-of-type { border-top: 0; padding-top: 0; }
+			.bl-md h3 { margin: 1.2em 0 .3em; font-size: 1.05em; }
+			.bl-md li { margin: .3em 0; }
+			.bl-md code { background: #f0f0f1; padding: 1px 5px; border-radius: 3px; }
+			.bl-md pre.bl-md-pre { background: #f6f7f7; border: 1px solid #dcdcde; border-radius: 4px; padding: 12px; overflow-x: auto; }
+			.bl-md pre.bl-md-pre code { background: none; padding: 0; }
+		</style>
+		<div class="bl-md">
+			<?php echo BL_AI_Markdown::to_html( $md ); // phpcs:ignore WordPress.Security.EscapeOutput — renderer escapes text and emits only whitelisted tags ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * The N most recent CHANGELOG.md version sections, as Markdown, with their
+	 * `##` headings demoted to `###` so they nest under the Help "Latest changes"
+	 * heading. Keeps the Help doc's changelog in sync with docs/CHANGELOG.md
+	 * automatically — no duplication.
+	 */
+	private function changelog_excerpt( $count ) {
+		$file = BL_AI_DIR . 'docs/CHANGELOG.md';
+		if ( ! is_readable( $file ) ) {
+			return '';
+		}
+		$lines    = explode( "\n", str_replace( "\r\n", "\n", (string) file_get_contents( $file ) ) );
+		$out      = array();
+		$sections = 0;
+		$capture  = false;
+		foreach ( $lines as $line ) {
+			if ( preg_match( '/^##\s+(.+)$/', $line, $m ) ) {
+				if ( ++$sections > $count ) {
+					break;
+				}
+				$capture = true;
+				$out[]   = '### ' . $m[1];
+				continue;
+			}
+			if ( $capture ) {
+				$out[] = $line;
+			}
+		}
+		return trim( implode( "\n", $out ) );
 	}
 
 	/** Format a unix timestamp in the site's timezone with a relative hint. */

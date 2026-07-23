@@ -1,6 +1,6 @@
 # BrightLocal - AI Tools
 
-WordPress plugin (`bl-ai-tools`). Manages an **EntityMap** in wp-admin as the single source of truth, auto-generates `/entitymap.json` (and a human-readable `/entitymap.html`), and drives Yoast Schema.org output.
+WordPress plugin (`bl-ai-tools`). A modular host for AI-facing tools; currently one tool, **Entity Maps**, which curates an EntityMap in wp-admin (the **Manage Entities** screen) as the single source of truth and publishes it as `/entitymap.json`, a human-readable `/entitymap.html`, and a generated `/llms.txt`, plus an XML sitemap entry via Yoast. An optional Yoast Schema.org integration is included but **currently hidden** (`BL_EntityMap_Schema::FEATURE_ENABLED = false`).
 
 - **Slug / folder / repo:** `bl-ai-tools`
 - **Main file:** `bl-ai-tools.php`
@@ -13,15 +13,28 @@ WordPress plugin (`bl-ai-tools`). Manages an **EntityMap** in wp-admin as the si
 ## Layout
 
 ```
-bl-ai-tools.php                 Bootstrap: defines BL_AI_* constants, requires classes, wires boot/activation hooks
+bl-ai-tools.php                       Bootstrap: BL_AI_* constants, requires framework + tools, boot/activation hooks
 includes/
-  class-bl-entitymap-store.php      Reads bl_entity CPT posts into entity data; caches (BL_EntityMap_Store)
-  class-bl-entitymap-cpt.php        Registers the `bl_entity` CPT + meta boxes / repeater UI
-  class-bl-entitymap-generator.php  Builds the entitymap document; serves /entitymap.json + .html; writes static files
-  class-bl-entitymap-schema.php     Yoast filters: enrich Organization + inject per-page DefinedTerm/Service nodes
-  class-bl-entitymap-importer.php   Import entities from uploaded files
-  class-bl-entitymap-admin.php      wp-admin settings/tools/help pages under the EntityMap menu
-composer.json                   type: wordpress-plugin
+  framework/
+    class-bl-ai-tool.php              Abstract base for a tool module
+    class-bl-ai-tools-registry.php    Holds/boots tools; owns the top-level "BL AI Tools" menu + dashboard
+    class-bl-ai-markdown.php          Tiny Markdown→HTML renderer (lets admin screens render docs/*.md)
+  tools/entity-maps/
+    class-bl-ai-tool-entity-maps.php  The Entity Maps tool module (wires the classes below into the menu)
+    class-bl-entitymap-store.php      Reads/writes bl_entity posts ↔ entity data; vocab; caching (BL_EntityMap_Store)
+    class-bl-entitymap-cpt.php        Registers the bl_entity CPT (hidden from menu) + meta boxes
+    class-bl-entitymap-manager.php    The Manage Entities master–detail screen + AJAX (save/delete/page + Wikidata search)
+    class-bl-entitymap-generator.php  Builds the document; serves/writes entitymap.json + .html + llms.txt; head links
+    class-bl-entitymap-sitemap.php    Registers entitymap-sitemap.xml with Yoast (feature-level Yoast dependency)
+    class-bl-entitymap-schema.php     Yoast schema filters (currently hidden behind FEATURE_ENABLED)
+    class-bl-entitymap-importer.php   Import/upsert entities from a decoded document
+    class-bl-entitymap-backups.php    Timestamped entitymap.json snapshots; restore
+    class-bl-entitymap-admin.php      The tabbed hub: Manage Entities · Files · Import · Settings · Help
+    assets/manage.{js,css}            Manage Entities screen assets (vanilla JS, no build)
+assets/icon.svg                       Top-level menu icon
+docs/                                 help.md (rendered as the Help tab), CHANGELOG.md, admin-guide.md, architecture.md, data-model.md, schema-integration.md, bugs/, features/
+uninstall.php                         Full data cleanup on plugin delete
+composer.json                         type: wordpress-plugin
 ```
 
 ## Conventions
@@ -31,7 +44,11 @@ composer.json                   type: wordpress-plugin
 - **Booting:** everything is instantiated in `bl_ai_boot()` on `plugins_loaded`. Rewrite rules for `/entitymap.json` are flushed on activation (`bl_ai_activate`).
 - **Caching:** the store and generator cache via transients (`bl_entitymap_*` keys). CPT saves/deletes flush the cache and fire `bl_entitymap_changed` to regenerate.
 - **Schema injection is behind a master toggle** and off by default (settings page under the EntityMap menu). Yoast (`wpseo_schema_*`) filters only attach when enabled.
-- **Version bumps:** update BOTH the header `Version:` and `BL_AI_VERSION` together, and follow the existing commit-message style (`vX.Y.Z: summary`).
+- **Version bumps:** update BOTH the header `Version:` and `BL_AI_VERSION` together on **every** change (the plugin ships via GitHub/Composer, so the version is how sites pull a new build), and follow the existing commit-message style (`vX.Y.Z: summary`).
+- **Docs are part of every change — keep them current in the same commit.** This is a hard rule (the in-admin Help is generated from these, and teammates rely on them):
+  - `docs/help.md` — rendered **live** as the Help tab via `BL_AI_Markdown`; the single source of truth for end-user help (no hardcoded help HTML in PHP). Stay within the renderer's subset: `#`/`##`/`###` headings, `-`/`1.` lists, `**bold**`, `` `code` ``, `[links](url)`, ` ``` ` fences — **no tables**. Internal links use `{{tab:*}}` / `{{url:*}}` tokens resolved in `tab_help()`.
+  - `docs/CHANGELOG.md` — add an entry per version bump. The Help tab's "Latest changes" pulls the top 5 from here automatically (`{{changelog:5}}`), so don't duplicate it by hand.
+  - `docs/admin-guide.md` (tabs / options / mechanics) and `docs/architecture.md` (classes / boot / hooks / data flow) — update when behaviour or structure changes. Keep this `CLAUDE.md` (intro, Layout) accurate too.
 
 ## Gotchas
 

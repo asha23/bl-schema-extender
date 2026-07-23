@@ -1,0 +1,70 @@
+# Changelog
+
+All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions track
+the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
+whenever behaviour changes.
+
+## 2.19.0
+- Help doc now shows a **Latest changes** section pulled live from this changelog
+  (top 5 versions), so it stays current automatically.
+- Brought `docs/admin-guide.md` and `docs/architecture.md` fully up to date with
+  the current tool.
+
+## 2.18.0
+- Help tab now renders from `docs/help.md` (single source of truth) via a small
+  dependency-free Markdown renderer (`BL_AI_Markdown`); rewritten to cover the
+  current tool. Added this changelog.
+
+## 2.17.0
+- Added `BL_EntityMap_Sitemap`: a dedicated `/entitymap-sitemap.xml` registered
+  with Yoast and listed in `sitemap_index.xml` (lists `entitymap.html`). Yoast is
+  a feature-level dependency — no-ops without it; the Files tab shows status.
+  Completes the sitemap `<lastmod>` freshness signal.
+
+## 2.16.0 – 2.16.2
+- Brandable top-level menu icon from `assets/icon.svg` (base64 SVG), with a
+  Dashicon fallback and the `bl_ai_menu_icon` filter.
+- Moved the **BL AI Tools** menu below **Tools** in the admin sidebar.
+
+## 2.15.0
+- Hid the Yoast Schema.org mapping feature behind a master kill-switch
+  (`BL_EntityMap_Schema::FEATURE_ENABLED`). Code retained for future use;
+  settings, help, and integrity checks for it are hidden while off.
+
+## 2.14.0
+- Added **Settings → Vocabulary**: add custom entity types and relation
+  predicates without code, backed by the `bl_em_entity_types` /
+  `bl_em_predicates` filters. Additive only (built-ins can't be removed).
+
+## 2.13.0
+- Extended the recognised vocabulary: added the `Person` entity type and 13
+  relation predicates so enriched imports validate with zero warnings.
+
+## 2.12.0
+- Dynamic endpoints send a real `Last-Modified` + `Cache-Control` and answer
+  `If-Modified-Since` with `304`.
+- Richer `entitymap.html` JSON-LD: an `@graph` with an Organization node and a
+  CollectionPage indexing every entity as a `DefinedTerm` (with `@id`, `sameAs`,
+  and a link to its source page).
+
+## 2.11.0 – 2.11.1
+- `llms.txt` is now generated in full from the EntityMap (title, summary,
+  machine-readable index, entities grouped by kind), behind the "Generate
+  llms.txt" setting. Added an `llms.txt` card to the Files tab.
+
+## 2.9.0
+- Discoverability fixes: absolute URLs in the published output now derive from
+  the canonical base URL (environment-independent); a sitewide `<head>`
+  `rel="alternate"` link to `entitymap.json`; canonical + alternate links in the
+  `entitymap.html` head.
+
+## 2.8.0
+- Manage Entities polish: **Find on Wikidata** lookup for `sameAs`, a page-search
+  picker for "Attach to page", a saving overlay, a sticky save bar, and an
+  automatic backup before every edit/delete.
+
+## 2.7.0
+- New **Manage Entities** master–detail screen — the primary way to curate the
+  map (add/edit/delete inline, auto-regenerate). The classic per-entity CPT
+  editor is hidden from the menu (kept as an internal fallback). Entity IDs are
+  now allocated from a monotonic counter, so an ID is never reused.

@@ -33,7 +33,8 @@ classes** — never instantiated in the boot path.
 | Class | File | Role |
 |-------|------|------|
 | `BL_AI_Tool` | `framework/class-bl-ai-tool.php` | Abstract base. A tool implements `id()` + `label()`, and optionally `description()`, `icon()`, `menu_slug()`, `register()` (runtime hooks), `register_admin($parent)` (submenus), and `activate()`. |
-| `BL_AI_Tools_Registry` | `framework/class-bl-ai-tools-registry.php` | Holds the tools, boots them, owns the top-level **BL AI Tools** menu (`MENU_SLUG = bl-ai-tools`), and renders the dashboard of tool cards. |
+| `BL_AI_Tools_Registry` | `framework/class-bl-ai-tools-registry.php` | Holds the tools, boots them, owns the top-level **BL AI Tools** menu (`MENU_SLUG = bl-ai-tools`, positioned below Tools, custom icon from `assets/icon.svg` via `menu_icon()`), and renders the dashboard of tool cards. |
+| `BL_AI_Markdown` | `framework/class-bl-ai-markdown.php` | Tiny dependency-free Markdown→HTML renderer for a controlled subset. Lets admin screens render straight from `docs/*.md` (the Help tab renders `docs/help.md`), keeping one source of truth. |
 
 ## Class responsibilities (Entity Maps tool)
 

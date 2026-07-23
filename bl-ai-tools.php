@@ -3,7 +3,7 @@
 * Plugin Name: BrightLocal - AI Tools
 * Plugin URI: https://brightlocal.com
 * Description: BrightLocal AI Tools — a modular collection of AI-related website tools. Currently: Entity Maps - Manage entitymap.json / entitymap.html / llms.txt.
-* Version: 2.17.0
+* Version: 2.19.0
 * Author: Ash Whiting for BrightLocal
 * Author URI: https://brightlocal.com
 * Text Domain: bl-ai-tools
@@ -15,7 +15,7 @@
 // Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'BL_AI_VERSION', '2.17.0' );
+define( 'BL_AI_VERSION', '2.19.0' );
 define( 'BL_AI_FILE', __FILE__ );
 define( 'BL_AI_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -23,6 +23,7 @@ define( 'BL_AI_DIR', plugin_dir_path( __FILE__ ) );
  * Load the modular framework, then each tool module. To add a new tool: require
  * its module file here and register it in bl_ai_registry() below.
  */
+require_once BL_AI_DIR . 'includes/framework/class-bl-ai-markdown.php';
 require_once BL_AI_DIR . 'includes/framework/class-bl-ai-tool.php';
 require_once BL_AI_DIR . 'includes/framework/class-bl-ai-tools-registry.php';
 require_once BL_AI_DIR . 'includes/tools/entity-maps/class-bl-ai-tool-entity-maps.php';
