@@ -504,6 +504,9 @@ class BL_EntityMap_Store {
 	 */
 	public static function flush_cache() {
 		delete_transient( self::CACHE_KEY );
+		// Record the change time so the dynamic endpoints can serve an accurate
+		// Last-Modified header (and answer conditional GETs with 304).
+		update_option( 'bl_em_changed_gmt', time() );
 		do_action( 'bl_entitymap_changed' );
 	}
 }

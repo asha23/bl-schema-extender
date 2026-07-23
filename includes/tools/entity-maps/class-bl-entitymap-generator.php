@@ -148,11 +148,27 @@ class BL_EntityMap_Generator {
 		// Root-relative link so it resolves on any host.
 		$json_link = '/entitymap.json';
 
-		// Schema.org JSON-LD index for the page head.
+		// Schema.org JSON-LD (@graph): an Organization for the publisher and a
+		// CollectionPage that indexes every entity as a DefinedTerm — each with a
+		// stable @id, its verified sameAs, and a link to its source page.
+		$org_id  = $base . '/#organization';
+		$page_id = $html_url . '#entitymap';
+
+		$organization = array(
+			'@type' => 'Organization',
+			'@id'   => $org_id,
+			'name'  => $pub_name,
+			'url'   => $pub_url,
+		);
+		if ( ! empty( $doc['publisher']['sameAs'] ) ) {
+			$organization['sameAs'] = $doc['publisher']['sameAs'];
+		}
+
 		$has_part = array();
 		foreach ( $entities as $e ) {
 			$term = array(
 				'@type'    => 'DefinedTerm',
+				'@id'      => $json_url . '#' . $e['entityId'],
 				'name'     => $e['name'],
 				'termCode' => $e['entityId'],
 			);
@@ -162,20 +178,29 @@ class BL_EntityMap_Generator {
 			if ( ! empty( $e['sameAs'] ) ) {
 				$term['sameAs'] = $e['sameAs'];
 			}
+			$term_url = $this->entity_url( $e );
+			if ( $term_url !== '' ) {
+				$term['url'] = $term_url;
+			}
 			$has_part[] = $term;
 		}
-		$ld = array(
-			'@context'     => 'https://schema.org',
-			'@type'        => 'WebPage',
-			'name'         => $pub_name . ' EntityMap',
+
+		$collection = array(
+			'@type'        => 'CollectionPage',
+			'@id'          => $page_id,
 			'url'          => $html_url,
-			'publisher'    => array( '@type' => 'Organization', 'name' => $pub_name, 'url' => $pub_url ),
+			'name'         => $pub_name . ' EntityMap',
+			'description'  => 'A structured, entity-first index of what ' . $pub_name . ' knows, published per the EntityMap open standard for AI systems and retrieval pipelines.',
+			'publisher'    => array( '@id' => $org_id ),
+			'about'        => array( '@id' => $org_id ),
 			'dateModified' => isset( $doc['generated'] ) ? $doc['generated'] : '',
 			'hasPart'      => $has_part,
 		);
-		if ( ! empty( $doc['publisher']['sameAs'] ) ) {
-			$ld['publisher']['sameAs'] = $doc['publisher']['sameAs'];
-		}
+
+		$ld = array(
+			'@context' => 'https://schema.org',
+			'@graph'   => array( $organization, $collection ),
+		);
 		$ld_json = wp_json_encode( $ld, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 
 		ob_start();
@@ -532,8 +557,20 @@ class BL_EntityMap_Generator {
 			exit;
 		}
 
-		nocache_headers();
+		// Freshness: a real Last-Modified so crawlers can revalidate cheaply and
+		// re-fetch only when the map actually changes. (The static files get this
+		// for free from the filesystem; this covers the dynamic fallback.)
+		$last = $this->last_modified_ts();
 		header( 'X-Robots-Tag: index, follow' );
+		header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s', $last ) . ' GMT' );
+		header( 'Cache-Control: public, max-age=0, must-revalidate' );
+
+		// Conditional GET — answer If-Modified-Since with 304 when unchanged.
+		$ims = isset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ? strtotime( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) : false;
+		if ( $ims !== false && $ims >= $last ) {
+			status_header( 304 );
+			exit;
+		}
 
 		if ( $is_html ) {
 			header( 'Content-Type: text/html; charset=utf-8' );
@@ -543,5 +580,22 @@ class BL_EntityMap_Generator {
 			echo $this->get_json(); // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		exit;
+	}
+
+	/**
+	 * Unix timestamp of the last EntityMap change, for the Last-Modified header.
+	 * Prefers the recorded change time (set by the Store on any entity/settings
+	 * change), then the static file's mtime, and finally the current time.
+	 */
+	private function last_modified_ts() {
+		$ts = (int) get_option( 'bl_em_changed_gmt', 0 );
+		if ( $ts > 0 ) {
+			return $ts;
+		}
+		$path = $this->static_path();
+		if ( file_exists( $path ) ) {
+			return (int) filemtime( $path );
+		}
+		return time();
 	}
 }
