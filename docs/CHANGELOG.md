@@ -4,6 +4,12 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.24.0
+- Brought generated `llms.txt` in line with the llms.txt spec: H1 is now the
+  first line (provenance moved to a trailing comment), list items use the
+  `[name](url): notes` colon format, and every item is a link (entities without a
+  source page link to their anchor in `entitymap.html`).
+
 ## 2.23.0
 - Help tab redesigned to use native WordPress admin **cards** per section, with
   cleaner typography.
