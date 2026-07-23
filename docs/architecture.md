@@ -123,3 +123,6 @@ files* toggle (`bl_em_enable_json`) is off.
 | `bl_entitymap_changed` | action | Fired on any entity/settings change; the Generator regenerates on it. |
 | `bl_entitymap_path` | filter | Override the static JSON file path. |
 | `bl_entitymap_html_path` | filter | Override the static HTML file path. |
+| `bl_entitymap_llms_path` | filter | Override the static `llms.txt` file path. |
+| `bl_em_entity_types` | filter | Extend the recognised entity types (built-ins + Settings additions are passed in). |
+| `bl_em_predicates` | filter | Extend the recognised relation predicates (built-ins + Settings additions are passed in). |

@@ -74,10 +74,31 @@ class BL_EntityMap_Admin {
 			}
 			register_setting( self::GROUP, $key, array( 'sanitize_callback' => $sanitize ) );
 		}
+
+		// Custom vocabulary (stored as arrays; edited as one-per-line textareas).
+		register_setting( self::GROUP, 'bl_em_custom_types', array( 'type' => 'array', 'default' => array(), 'sanitize_callback' => array( $this, 'sanitize_vocab_list' ) ) );
+		register_setting( self::GROUP, 'bl_em_custom_predicates', array( 'type' => 'array', 'default' => array(), 'sanitize_callback' => array( $this, 'sanitize_vocab_list' ) ) );
 	}
 
 	public function sanitize_bool( $val ) {
 		return $val === '1' ? '1' : '0';
+	}
+
+	/**
+	 * Sanitise a custom-vocabulary textarea (newline/comma separated) into a
+	 * clean, de-duplicated string[]. Entries are limited to safe token
+	 * characters so they can't corrupt the JSON/graph.
+	 */
+	public function sanitize_vocab_list( $raw ) {
+		$items = is_array( $raw ) ? $raw : preg_split( '/[\r\n,]+/', (string) $raw );
+		$clean = array();
+		foreach ( (array) $items as $item ) {
+			$item = preg_replace( '/[^A-Za-z0-9_\-]/', '', trim( (string) $item ) );
+			if ( $item !== '' ) {
+				$clean[] = $item;
+			}
+		}
+		return array_values( array_unique( $clean ) );
 	}
 
 	public function maybe_regenerate_after_save() {
@@ -361,6 +382,7 @@ class BL_EntityMap_Admin {
 					<td><input name="bl_em_backup_keep" id="bl_em_backup_keep" type="number" min="1" max="100" class="small-text" value="<?php echo esc_attr( get_option( 'bl_em_backup_keep', BL_EntityMap_Backups::KEEP_DEFAULT ) ); ?>">
 					<p class="description">How many <code>entitymap.json</code> snapshots to retain before pruning the oldest.</p></td></tr>
 
+<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?>
 				<tr><th scope="row">Add EntityMap data to Yoast schema</th>
 					<td>
 						<input type="hidden" name="bl_em_enable_schema" value="0">
@@ -371,6 +393,22 @@ class BL_EntityMap_Admin {
 					<td><input type="hidden" name="bl_em_enable_org" value="0"><label><input type="checkbox" name="bl_em_enable_org" value="1" <?php echo $chk( 'bl_em_enable_org' ); ?>> Add sameAs / knowsAbout / makesOffer to Yoast&rsquo;s Organization node</label></td></tr>
 				<tr><th scope="row" style="padding-left:2em;">↳ Per-page nodes</th>
 					<td><input type="hidden" name="bl_em_enable_perpage" value="0"><label><input type="checkbox" name="bl_em_enable_perpage" value="1" <?php echo $chk( 'bl_em_enable_perpage' ); ?>> Inject DefinedTerm / Service nodes on each entity&rsquo;s attached page</label></td></tr>
+<?php endif; ?>
+			</table>
+
+			<h2 class="title">Vocabulary</h2>
+			<p class="description" style="max-width:720px;">Extend the recognised entity types and relation predicates so enriched imports validate cleanly. <strong>Additive only</strong> &mdash; the built-in vocabulary is always recognised and can&rsquo;t be removed here. One entry per line. Types are <code>PascalCase</code> (e.g. <code>CreativeWork</code>); predicates are <code>UPPER_SNAKE</code> (e.g. <code>SPONSORS</code>).</p>
+			<table class="form-table" role="presentation">
+				<tr><th scope="row"><label for="bl_em_custom_types">Additional entity types</label></th>
+					<td>
+						<textarea name="bl_em_custom_types" id="bl_em_custom_types" rows="4" class="large-text code" placeholder="One per line, e.g. CreativeWork"><?php echo esc_textarea( implode( "\n", (array) get_option( 'bl_em_custom_types', array() ) ) ); ?></textarea>
+						<p class="description">Built-in (always recognised): <?php echo esc_html( implode( ', ', BL_EntityMap_Store::builtin_entity_types() ) ); ?></p>
+					</td></tr>
+				<tr><th scope="row"><label for="bl_em_custom_predicates">Additional relation predicates</label></th>
+					<td>
+						<textarea name="bl_em_custom_predicates" id="bl_em_custom_predicates" rows="4" class="large-text code" placeholder="One per line, e.g. SPONSORS"><?php echo esc_textarea( implode( "\n", (array) get_option( 'bl_em_custom_predicates', array() ) ) ); ?></textarea>
+						<p class="description">Built-in (always recognised): <?php echo esc_html( implode( ', ', BL_EntityMap_Store::builtin_predicates() ) ); ?></p>
+					</td></tr>
 			</table>
 			<?php submit_button(); ?>
 		</form>
@@ -601,14 +639,16 @@ class BL_EntityMap_Admin {
 JS;
 		?>
 		<div style="max-width:900px;">
-			<p style="font-size:14px;color:#555;max-width:680px;">Curate the entities BrightLocal is known for &mdash; products, services, key concepts, and research &mdash; in one place, and publish them as portable <code>entitymap.json</code> / <code>entitymap.html</code> files. Optionally, the same data can enrich your Yoast Schema.org markup.</p>
+			<p style="font-size:14px;color:#555;max-width:680px;">Curate the entities BrightLocal is known for &mdash; products, services, key concepts, and research &mdash; in one place, and publish them as portable <code>entitymap.json</code> / <code>entitymap.html</code> files.<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?> Optionally, the same data can enrich your Yoast Schema.org markup.<?php endif; ?></p>
 
 			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
 				<h2>What this tool does</h2>
-				<p>It maintains one list of the <strong>things BrightLocal is about</strong> and publishes it two ways:</p>
+				<p>It maintains one list of the <strong>things BrightLocal is about</strong> and publishes it:</p>
 				<ol>
 					<li><strong>Files</strong> at <code><?php echo $json_url; ?></code> and <code><?php echo $html_url; ?></code> &mdash; a curated, portable catalogue you control. Manage them under the <a href="<?php echo esc_url( self::tab_url( 'files' ) ); ?>">Files</a> tab.</li>
+					<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?>
 					<li><strong>On-page Schema.org</strong> (via Yoast) &mdash; the structured data Google&rsquo;s Knowledge Graph and AI engines actually read today. <em>Off by default;</em> enable it under <a href="<?php echo esc_url( self::tab_url( 'settings' ) ); ?>">Settings</a>.</li>
+					<?php endif; ?>
 				</ol>
 				<p style="margin-bottom:0;">You edit the list <em>once</em>, here in wp-admin. Both outputs update on their own. You never edit a file by hand.</p>
 			</div>
@@ -646,15 +686,19 @@ JS;
 			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
 				<h2>Check it&rsquo;s working</h2>
 				<p><strong>The files:</strong> open <code><?php echo $json_url; ?></code> &mdash; you should see all the entities.</p>
+				<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?>
 				<p><strong>On-page schema</strong> (if enabled): open any page, press <kbd>F12</kbd> &rarr; <strong>Console</strong>, paste this and press Enter:</p>
 				<textarea readonly class="widefat code" rows="9" style="font-family:monospace;font-size:12px;" onclick="this.select()"><?php echo esc_textarea( $devtools ); ?></textarea>
 				<p>To formally validate, paste a page&rsquo;s structured data into <a href="https://validator.schema.org/" target="_blank" rel="noopener">validator.schema.org</a> or <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">Google&rsquo;s Rich Results Test</a>.</p>
+				<?php endif; ?>
 			</div>
 
+			<?php if ( BL_EntityMap_Schema::FEATURE_ENABLED ) : ?>
 			<div class="card" style="max-width:100%;padding:4px 20px 16px;">
 				<h2>Requirement for Yoast schema</h2>
 				<p style="margin-bottom:0;">The Schema.org output is <strong>off by default</strong> &mdash; enable it under <a href="<?php echo esc_url( self::tab_url( 'settings' ) ); ?>">Settings</a>. Once on, the Organization schema only appears when <strong>Yoast SEO</strong> is active and, under <em>Yoast &rarr; Settings &rarr; Site representation</em>, the site represents an <strong>Organization</strong> with a <strong>name and logo</strong>. The <a href="<?php echo esc_url( self::tab_url( 'import' ) ); ?>">Import</a> tab flags this under Data integrity.</p>
 			</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -735,20 +779,25 @@ JS;
 			? array( 'level' => 'warn', 'msg' => 'Entities missing a description: ' . implode( ', ', $missing ) )
 			: array( 'level' => 'ok', 'msg' => 'All entities have a description.' );
 
-		if ( $org_count === 0 ) {
-			$issues[] = array( 'level' => 'warn', 'msg' => 'No Organization entity — sitewide Organization enrichment will have no sameAs/makesOffer source.' );
-		} elseif ( $org_count > 1 ) {
-			$issues[] = array( 'level' => 'warn', 'msg' => 'More than one Organization entity; the first is used for enrichment.' );
-		} else {
-			$issues[] = array( 'level' => 'ok', 'msg' => 'Exactly one Organization entity.' );
-		}
-
-		if ( function_exists( 'YoastSEO' ) ) {
-			$rep = get_option( 'wpseo_titles' );
-			if ( is_array( $rep ) && isset( $rep['company_or_person'] ) && $rep['company_or_person'] !== 'company' ) {
-				$issues[] = array( 'level' => 'warn', 'msg' => 'Yoast Site Representation is not “Organization/company” — the Organization schema node will not render, so enrichment is inert. Fix under Yoast → Settings → Site basics.' );
+		// Organization / Yoast checks only matter to the schema-mapping feature,
+		// which is currently hidden (BL_EntityMap_Schema::FEATURE_ENABLED). Skip
+		// them so the integrity report doesn't warn about an inactive feature.
+		if ( BL_EntityMap_Schema::FEATURE_ENABLED ) {
+			if ( $org_count === 0 ) {
+				$issues[] = array( 'level' => 'warn', 'msg' => 'No Organization entity — sitewide Organization enrichment will have no sameAs/makesOffer source.' );
+			} elseif ( $org_count > 1 ) {
+				$issues[] = array( 'level' => 'warn', 'msg' => 'More than one Organization entity; the first is used for enrichment.' );
 			} else {
-				$issues[] = array( 'level' => 'ok', 'msg' => 'Yoast Site Representation is set to a company.' );
+				$issues[] = array( 'level' => 'ok', 'msg' => 'Exactly one Organization entity.' );
+			}
+
+			if ( function_exists( 'YoastSEO' ) ) {
+				$rep = get_option( 'wpseo_titles' );
+				if ( is_array( $rep ) && isset( $rep['company_or_person'] ) && $rep['company_or_person'] !== 'company' ) {
+					$issues[] = array( 'level' => 'warn', 'msg' => 'Yoast Site Representation is not “Organization/company” — the Organization schema node will not render, so enrichment is inert. Fix under Yoast → Settings → Site basics.' );
+				} else {
+					$issues[] = array( 'level' => 'ok', 'msg' => 'Yoast Site Representation is set to a company.' );
+				}
 			}
 		}
 

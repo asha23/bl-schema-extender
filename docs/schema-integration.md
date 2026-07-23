@@ -1,5 +1,12 @@
 # Schema.org integration
 
+> **Currently hidden.** The whole schema-mapping feature is disabled and hidden
+> from the UI via the master kill-switch `BL_EntityMap_Schema::FEATURE_ENABLED`
+> (set to `false`). The code below is retained and unchanged; flip the constant
+> to `true` to bring back the settings, help, integrity checks, and runtime
+> injection (behaviour then falls back to the per-option toggles). The rest of
+> this document describes how it works when enabled.
+
 The EntityMap data can be layered into Yoast's Schema.org output through the
 `wpseo_schema_*` filter pipeline (`BL_EntityMap_Schema`). **Yoast SEO must be
 active** for any of it to do anything, and it is behind a master toggle that is

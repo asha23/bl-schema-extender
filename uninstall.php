@@ -47,6 +47,8 @@ function bl_ai_uninstall_cleanup() {
 		'bl_em_changed_gmt',
 		'bl_em_backup_keep',
 		'bl_em_entity_seq',
+		'bl_em_custom_types',
+		'bl_em_custom_predicates',
 	);
 
 	// Note: llms.txt is intentionally NOT deleted here — it is largely

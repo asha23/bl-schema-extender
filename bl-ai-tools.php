@@ -2,8 +2,8 @@
 /**
 * Plugin Name: BrightLocal - AI Tools
 * Plugin URI: https://brightlocal.com
-* Description: BrightLocal AI Tools — a modular collection of AI-facing tools. Currently: Entity Maps (manage entitymap.json / entitymap.html in wp-admin).
-* Version: 2.12.0
+* Description: BrightLocal AI Tools — a modular collection of AI-related website tools. Currently: Entity Maps - Manage entitymap.json / entitymap.html / llms.txt.
+* Version: 2.15.0
 * Author: Ash Whiting for BrightLocal
 * Author URI: https://brightlocal.com
 * Text Domain: bl-ai-tools
@@ -15,7 +15,7 @@
 // Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'BL_AI_VERSION', '2.12.0' );
+define( 'BL_AI_VERSION', '2.15.0' );
 define( 'BL_AI_FILE', __FILE__ );
 define( 'BL_AI_DIR', plugin_dir_path( __FILE__ ) );
 

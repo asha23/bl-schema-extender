@@ -16,7 +16,23 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class BL_EntityMap_Schema {
 
+	/**
+	 * Master kill-switch for the whole Yoast Schema.org mapping feature.
+	 *
+	 * While this is false the feature is fully hidden — no settings, no help, and
+	 * the runtime filters never attach (even if a stale bl_em_enable_schema=1 is
+	 * still stored). The code is intentionally retained so the feature can be
+	 * brought back by flipping this to true, at which point behaviour falls back
+	 * to the per-option toggles (bl_em_enable_schema / _org / _perpage).
+	 */
+	const FEATURE_ENABLED = false;
+
 	public function __construct() {
+		// Feature hidden/disabled for now — keep the class, attach nothing.
+		if ( ! self::FEATURE_ENABLED ) {
+			return;
+		}
+
 		if ( is_admin() ) {
 			return;
 		}

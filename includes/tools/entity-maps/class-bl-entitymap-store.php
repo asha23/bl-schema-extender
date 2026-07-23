@@ -24,12 +24,33 @@ class BL_EntityMap_Store {
 	 * Controlled vocabularies (surfaced in the admin as dropdowns).
 	 * ------------------------------------------------------------------- */
 
-	/** @return string[] schema.org-ish entity types used by the EntityMap. */
-	public static function entity_types() {
+	/** Built-in entity types — always recognised, cannot be removed. */
+	public static function builtin_entity_types() {
 		return array(
 			'Organization', 'Concept', 'Platform', 'Service',
 			'SoftwareProduct', 'ProprietaryTerm', 'Metric',
+			'Person', // maps to schema.org/Person (authors / E-E-A-T)
 		);
+	}
+
+	/**
+	 * Recognised entity types: built-ins + any added in Settings, then the
+	 * `bl_em_entity_types` filter for programmatic extension. Additive only.
+	 *
+	 * @return string[]
+	 */
+	public static function entity_types() {
+		$types = array_merge( self::builtin_entity_types(), self::custom_vocab( 'bl_em_custom_types' ) );
+		$types = array_values( array_unique( array_filter( $types ) ) );
+		return apply_filters( 'bl_em_entity_types', $types );
+	}
+
+	/**
+	 * Read a stored custom-vocabulary option (Settings) as a clean string[].
+	 */
+	private static function custom_vocab( $option ) {
+		$val = get_option( $option, array() );
+		return is_array( $val ) ? array_values( array_filter( array_map( 'strval', $val ) ) ) : array();
 	}
 
 	/** Entity types that should surface as schema.org DefinedTerm nodes. */
@@ -42,13 +63,33 @@ class BL_EntityMap_Store {
 		return array( 'Platform', 'Service', 'SoftwareProduct' );
 	}
 
-	/** @return string[] the relation predicate vocabulary. */
-	public static function predicates() {
+	/** Built-in relation predicates — always recognised, cannot be removed. */
+	public static function builtin_predicates() {
 		return array(
+			// Core vocabulary.
 			'OFFERS', 'INCLUDES', 'PART_OF', 'COVERS', 'ENABLES', 'DEPENDS_ON',
 			'ACHIEVES', 'IMPROVES', 'MEASURES', 'PRODUCED_BY', 'DESCRIBED_BY',
 			'RELATED_TO',
+			// Extended vocabulary (enriched map): authorship/people, product
+			// lineage, frameworks, distribution, conversion routes, competitive.
+			// COVERED_BY / DESCRIBES are the inverse directions of COVERS /
+			// DESCRIBED_BY; registered standalone (no inverse system in the plugin).
+			'ALTERNATIVE_TO', 'AUTHOR_OF', 'AFFILIATED_WITH', 'COVERED_BY',
+			'DESCRIBES', 'DISTRIBUTES_VIA', 'ENQUIRES_ABOUT', 'EVOLVES_FROM',
+			'EVOLVES_INTO', 'EXPOSES', 'FEEDS', 'PART_OF_FRAMEWORK', 'TRIAL_OF',
 		);
+	}
+
+	/**
+	 * Recognised relation predicates: built-ins + any added in Settings, then the
+	 * `bl_em_predicates` filter for programmatic extension. Additive only.
+	 *
+	 * @return string[]
+	 */
+	public static function predicates() {
+		$predicates = array_merge( self::builtin_predicates(), self::custom_vocab( 'bl_em_custom_predicates' ) );
+		$predicates = array_values( array_unique( array_filter( $predicates ) ) );
+		return apply_filters( 'bl_em_predicates', $predicates );
 	}
 
 	public static function content_types() {

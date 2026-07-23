@@ -56,10 +56,10 @@ Defined as static arrays on `BL_EntityMap_Store` and surfaced as admin dropdowns
 
 | Vocabulary | Values |
 |------------|--------|
-| `entity_types()` | `Organization`, `Concept`, `Platform`, `Service`, `SoftwareProduct`, `ProprietaryTerm`, `Metric` |
+| `entity_types()` | `Organization`, `Concept`, `Platform`, `Service`, `SoftwareProduct`, `ProprietaryTerm`, `Metric`, `Person` |
 | `definedterm_types()` | `Concept`, `ProprietaryTerm` — surface as schema.org `DefinedTerm` |
 | `offer_types()` | `Platform`, `Service`, `SoftwareProduct` — become `Organization → makesOffer` |
-| `predicates()` | `OFFERS`, `INCLUDES`, `PART_OF`, `COVERS`, `ENABLES`, `DEPENDS_ON`, `ACHIEVES`, `IMPROVES`, `MEASURES`, `PRODUCED_BY`, `DESCRIBED_BY`, `RELATED_TO` |
+| `predicates()` | Core: `OFFERS`, `INCLUDES`, `PART_OF`, `COVERS`, `ENABLES`, `DEPENDS_ON`, `ACHIEVES`, `IMPROVES`, `MEASURES`, `PRODUCED_BY`, `DESCRIBED_BY`, `RELATED_TO`. Extended: `ALTERNATIVE_TO`, `AUTHOR_OF`, `AFFILIATED_WITH`, `COVERED_BY`, `DESCRIBES`, `DISTRIBUTES_VIA`, `ENQUIRES_ABOUT`, `EVOLVES_FROM`, `EVOLVES_INTO`, `EXPOSES`, `FEEDS`, `PART_OF_FRAMEWORK`, `TRIAL_OF` |
 | `content_types()` | `definition`, `evidence`, `statistic`, `procedure` |
 | `audience_types()` | `general`, `technical`, `executive` |
 | `confidence_levels()` | `''` (stated), `stated`, `inferred` |
@@ -68,6 +68,13 @@ Defined as static arrays on `BL_EntityMap_Store` and surfaced as admin dropdowns
 `offer_schema_type($type)` maps an EntityMap type to the schema.org type used when
 it's offered: `Platform`/`SoftwareProduct` → `SoftwareApplication`, everything
 else → `Service`.
+
+**Extending the vocabulary.** `entity_types()` and `predicates()` return the
+built-ins (`builtin_entity_types()` / `builtin_predicates()`) merged with custom
+values added under **Settings → Vocabulary** (`bl_em_custom_types` /
+`bl_em_custom_predicates` options), then passed through the `bl_em_entity_types`
+/ `bl_em_predicates` filters for programmatic extension. Additive only — built-ins
+can't be removed, so existing entity data is never orphaned.
 
 ## The `entitymap.json` document
 
