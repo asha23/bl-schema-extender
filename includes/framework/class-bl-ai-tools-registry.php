@@ -58,7 +58,7 @@ class BL_AI_Tools_Registry {
 			self::CAP,
 			self::MENU_SLUG,
 			array( $this, 'render_dashboard' ),
-			'dashicons-superhero',
+			self::menu_icon(),
 			58
 		);
 
@@ -93,6 +93,27 @@ class BL_AI_Tools_Registry {
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Top-level menu icon. Uses the custom SVG at the plugin's assets/icon.svg
+	 * (base64 data URI) when present; otherwise falls back to a Dashicon. To
+	 * re-brand, replace that file with your own — a small, single-colour SVG with
+	 * a square-ish viewBox works best. Filterable via `bl_ai_menu_icon` for a URL
+	 * or Dashicon instead.
+	 */
+	private static function menu_icon() {
+		$default = 'dashicons-superhero';
+		$svg     = defined( 'BL_AI_DIR' ) ? BL_AI_DIR . 'assets/icon.svg' : '';
+
+		if ( $svg && is_readable( $svg ) ) {
+			$data = file_get_contents( $svg ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			if ( is_string( $data ) && $data !== '' ) {
+				$default = 'data:image/svg+xml;base64,' . base64_encode( $data ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+			}
+		}
+
+		return apply_filters( 'bl_ai_menu_icon', $default );
 	}
 
 	/** Resolve a tool's primary admin URL from its menu_slug(). */
