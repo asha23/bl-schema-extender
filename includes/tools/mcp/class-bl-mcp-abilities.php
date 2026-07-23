@@ -111,6 +111,63 @@ class BL_MCP_Abilities {
 			'execute_callback'    => array( __CLASS__, 'get_content' ),
 			'meta'                => array( 'show_in_rest' => true ),
 		) );
+
+		// EntityMap tools — registered only when the Entity Maps tool is present
+		// (same plugin, but kept decoupled so MCP degrades gracefully without it).
+		if ( class_exists( 'BL_EntityMap_Store' ) ) {
+			wp_register_ability( 'brightlocal/search_entities', array(
+				'label'               => __( 'Search BrightLocal entities', 'bl-ai-tools' ),
+				'description'         => __( 'Search the curated BrightLocal EntityMap — the things BrightLocal is known for (products, services, concepts, research). Returns each entity\'s name, type, description, verified sameAs link, and page. Omit the query to list all (optionally filtered by type). Use get_entity for full detail.', 'bl-ai-tools' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'query' => array( 'type' => 'string', 'description' => 'Optional search terms (matched against name/description). Omit to list all.' ),
+						'type'  => array( 'type' => 'string', 'description' => 'Optional entity type filter (e.g. Service, Concept, Platform, ProprietaryTerm, Metric, Person).' ),
+						'limit' => array( 'type' => 'integer', 'description' => 'Maximum results (1–50).', 'minimum' => 1, 'maximum' => 50, 'default' => 25 ),
+					),
+				),
+				'output_schema'       => array(
+					'type'       => 'object',
+					'properties' => array(
+						'results' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'entityId'    => array( 'type' => 'string' ),
+									'name'        => array( 'type' => 'string' ),
+									'type'        => array( 'type' => 'string' ),
+									'description' => array( 'type' => 'string' ),
+									'sameAs'      => array( 'type' => 'string' ),
+									'url'         => array( 'type' => 'string' ),
+								),
+							),
+						),
+					),
+				),
+				'permission_callback' => array( __CLASS__, 'can_use' ),
+				'execute_callback'    => array( __CLASS__, 'search_entities' ),
+				'meta'                => array( 'show_in_rest' => true ),
+			) );
+
+			wp_register_ability( 'brightlocal/get_entity', array(
+				'label'               => __( 'Get a BrightLocal entity', 'bl-ai-tools' ),
+				'description'         => __( 'Fetch one BrightLocal entity in full by id or name — description, evidence quotes with sources, relationships to other entities, and its verified sameAs link.', 'bl-ai-tools' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'   => array( 'type' => 'string', 'description' => 'The entity id (e.g. e_004).' ),
+						'name' => array( 'type' => 'string', 'description' => 'The entity name (exact, else first partial match).' ),
+					),
+				),
+				'output_schema'       => array( 'type' => 'object' ),
+				'permission_callback' => array( __CLASS__, 'can_use' ),
+				'execute_callback'    => array( __CLASS__, 'get_entity' ),
+				'meta'                => array( 'show_in_rest' => true ),
+			) );
+		}
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -209,6 +266,103 @@ class BL_MCP_Abilities {
 			'type'    => $post->post_type,
 			'content' => $text,
 		);
+	}
+
+	/**
+	 * search_entities — search/list the curated EntityMap.
+	 *
+	 * @param array $input
+	 * @return array|WP_Error
+	 */
+	public static function search_entities( $input ) {
+		if ( ! class_exists( 'BL_EntityMap_Store' ) ) {
+			return new WP_Error( 'bl_mcp_no_entitymap', 'The EntityMap is not available.' );
+		}
+		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
+		$type  = isset( $input['type'] ) ? (string) $input['type'] : '';
+		$limit = isset( $input['limit'] ) ? max( 1, min( 50, (int) $input['limit'] ) ) : 25;
+
+		$out = array();
+		foreach ( BL_EntityMap_Store::get_entities() as $e ) {
+			if ( $type !== '' && ( ! isset( $e['@type'] ) || $e['@type'] !== $type ) ) {
+				continue;
+			}
+			if ( $query !== '' ) {
+				$hay = strtolower( ( $e['name'] ?? '' ) . ' ' . ( $e['description'] ?? '' ) . ' ' . ( $e['alternateName'] ?? '' ) );
+				if ( strpos( $hay, $query ) === false ) {
+					continue;
+				}
+			}
+			$out[] = array(
+				'entityId'    => $e['entityId'] ?? '',
+				'name'        => $e['name'] ?? '',
+				'type'        => $e['@type'] ?? '',
+				'description' => $e['description'] ?? '',
+				'sameAs'      => $e['sameAs'] ?? '',
+				'url'         => self::entity_url( $e ),
+			);
+			if ( count( $out ) >= $limit ) {
+				break;
+			}
+		}
+		return array( 'results' => $out );
+	}
+
+	/**
+	 * get_entity — one entity in full, by id or name.
+	 *
+	 * @param array $input
+	 * @return array|WP_Error
+	 */
+	public static function get_entity( $input ) {
+		if ( ! class_exists( 'BL_EntityMap_Store' ) ) {
+			return new WP_Error( 'bl_mcp_no_entitymap', 'The EntityMap is not available.' );
+		}
+		$id   = isset( $input['id'] ) ? trim( (string) $input['id'] ) : '';
+		$name = isset( $input['name'] ) ? strtolower( trim( (string) $input['name'] ) ) : '';
+		if ( $id === '' && $name === '' ) {
+			return new WP_Error( 'bl_mcp_no_target', 'Provide an id or a name.' );
+		}
+
+		$entities = BL_EntityMap_Store::get_entities();
+		$match    = null;
+
+		// Exact id, then exact name.
+		foreach ( $entities as $e ) {
+			if ( $id !== '' && ( $e['entityId'] ?? '' ) === $id ) { $match = $e; break; }
+			if ( $name !== '' && strtolower( $e['name'] ?? '' ) === $name ) { $match = $e; break; }
+		}
+		// Fall back to first partial name match.
+		if ( ! $match && $name !== '' ) {
+			foreach ( $entities as $e ) {
+				if ( strpos( strtolower( $e['name'] ?? '' ), $name ) !== false ) { $match = $e; break; }
+			}
+		}
+		if ( ! $match ) {
+			return new WP_Error( 'bl_mcp_not_found', 'No entity matched that id/name.' );
+		}
+
+		$match['url'] = self::entity_url( $match );
+		return $match;
+	}
+
+	/** Best URL for an entity: a definition chunk's source, else first chunk, else its anchor. */
+	private static function entity_url( $e ) {
+		$chunks = isset( $e['hasChunks'] ) ? $e['hasChunks'] : array();
+		foreach ( $chunks as $c ) {
+			if ( ! empty( $c['sourceUrl'] ) && isset( $c['contentType'] ) && $c['contentType'] === 'definition' ) {
+				return $c['sourceUrl'];
+			}
+		}
+		foreach ( $chunks as $c ) {
+			if ( ! empty( $c['sourceUrl'] ) ) {
+				return $c['sourceUrl'];
+			}
+		}
+		if ( class_exists( 'BL_EntityMap_Store' ) && ! empty( $e['entityId'] ) ) {
+			return BL_EntityMap_Store::base_url() . '/entitymap.html#' . $e['entityId'];
+		}
+		return '';
 	}
 
 	/** A short plain-text excerpt for a post. */

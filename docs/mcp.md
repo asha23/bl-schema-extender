@@ -21,14 +21,24 @@ the abilities; the adapter handles the JSON-RPC handshake, `tools/list` /
 
 ## Tools (abilities)
 
-Both read-only, and hard-limited to **published, public** content (never drafts
+All read-only, and hard-limited to **published, public** content (never drafts
 or private posts):
 
+**Content (always):**
 - **`brightlocal/search_content`** — input `{ query, type?, limit? (1–25) }` →
   `{ results: [{ title, url, excerpt, type, date }] }`. Backed by `WP_Query`.
 - **`brightlocal/get_content`** — input `{ url | id }` →
   `{ title, url, type, content }` (full readable text; shortcodes stripped,
   capped at `bl_mcp_max_content_chars`, default 20000).
+
+**EntityMap (only when the Entity Maps tool is present):** reads the same curated
+map you manage — decoupled via `class_exists('BL_EntityMap_Store')`, so MCP still
+works without it.
+- **`brightlocal/search_entities`** — input `{ query?, type?, limit? (1–50) }` →
+  `{ results: [{ entityId, name, type, description, sameAs, url }] }`. Omit the
+  query to list all (optionally by type).
+- **`brightlocal/get_entity`** — input `{ id | name }` → the full entity
+  (description, evidence chunks, relations, sameAs, url).
 
 ## The server
 

@@ -45,9 +45,13 @@ class BL_MCP_Admin {
 					<tbody>
 						<tr><td style="width:200px;"><code>search_content</code></td><td>Search published content (guides, posts, pages) &mdash; returns titles, URLs, and excerpts.</td></tr>
 						<tr><td><code>get_content</code></td><td>Fetch one published page/post in full (readable text), by URL or ID.</td></tr>
+						<?php if ( class_exists( 'BL_EntityMap_Store' ) ) : ?>
+						<tr><td><code>search_entities</code></td><td>Search/list the curated EntityMap (products, services, concepts, research) &mdash; name, type, description, sameAs, page.</td></tr>
+						<tr><td><code>get_entity</code></td><td>Fetch one entity in full (evidence, relationships, sameAs), by id or name.</td></tr>
+						<?php endif; ?>
 					</tbody>
 				</table>
-				<p class="description" style="margin-bottom:0;">Read-only, and limited to <strong>published, public</strong> content &mdash; never drafts or private posts.</p>
+				<p class="description" style="margin-bottom:0;">Read-only, and limited to <strong>published, public</strong> content &mdash; never drafts or private posts.<?php echo class_exists( 'BL_EntityMap_Store' ) ? ' The entity tools read the same curated EntityMap you manage under Entity Maps.' : ''; ?></p>
 			</div>
 
 			<div class="card" style="max-width:820px;padding:4px 24px 18px;">

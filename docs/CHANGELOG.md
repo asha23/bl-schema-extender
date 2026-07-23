@@ -4,6 +4,12 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.26.0
+- BrightLocal MCP: added **`search_entities`** and **`get_entity`** tools that
+  expose the curated EntityMap (products, services, concepts, research) over MCP
+  — name, type, description, evidence, relationships, and verified sameAs links.
+  Registered only when the Entity Maps tool is present.
+
 ## 2.25.0
 - New tool: **BrightLocal MCP** — a dedicated, authenticated Model Context
   Protocol server (`/wp-json/brightlocal/mcp`) that lets AI assistants search

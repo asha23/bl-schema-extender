@@ -43,7 +43,13 @@ class BL_MCP_Server {
 
 	/** The tools (ability names) this server exposes. */
 	public static function tools() {
-		return array( 'brightlocal/search_content', 'brightlocal/get_content' );
+		$tools = array( 'brightlocal/search_content', 'brightlocal/get_content' );
+		// EntityMap tools ride along when the Entity Maps tool is present.
+		if ( class_exists( 'BL_EntityMap_Store' ) ) {
+			$tools[] = 'brightlocal/search_entities';
+			$tools[] = 'brightlocal/get_entity';
+		}
+		return $tools;
 	}
 
 	/**
