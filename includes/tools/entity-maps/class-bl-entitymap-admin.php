@@ -162,6 +162,16 @@ class BL_EntityMap_Admin {
 				'path'  => $generator->static_html_path(),
 			),
 		);
+
+		$llms_on = get_option( 'bl_em_enable_llms', '0' ) === '1';
+		if ( $llms_on ) {
+			$files['llms'] = array(
+				'label' => 'llms.txt',
+				'desc'  => 'AI site guide, generated from the EntityMap.',
+				'url'   => home_url( '/llms.txt' ),
+				'path'  => $generator->static_llms_path(),
+			);
+		}
 		?>
 		<?php if ( ! $enabled ) : ?>
 			<div class="notice notice-warning inline" style="margin:0 0 1.5em;"><p>Publishing is turned <strong>off</strong> in <a href="<?php echo esc_url( self::tab_url( 'settings' ) ); ?>">Settings</a> &mdash; the files below are not served. Turn on &ldquo;Publish EntityMap files&rdquo; to enable them.</p></div>
@@ -201,10 +211,14 @@ class BL_EntityMap_Admin {
 			<?php endif; ?>
 		</p>
 
+		<?php if ( ! $llms_on ) : ?>
+			<p style="margin:1.25em 0;"><span class="dashicons dashicons-info-outline" style="color:#787c82;"></span> <code>llms.txt</code> generation is <strong>off</strong>. Turn on &ldquo;Generate llms.txt&rdquo; in <a href="<?php echo esc_url( self::tab_url( 'settings' ) ); ?>">Settings</a> to publish <code>/llms.txt</code> from the EntityMap.</p>
+		<?php endif; ?>
+
 		<form method="post" style="margin:1em 0;">
 			<?php wp_nonce_field( 'bl_em_tool', 'bl_em_tool_nonce' ); ?>
 			<button class="button button-primary" name="bl_em_tool" value="regenerate">Regenerate now</button>
-			<span class="description" style="margin-left:8px;">Rebuild both files from the current entities.</span>
+			<span class="description" style="margin-left:8px;">Rebuild the entitymap files<?php echo $llms_on ? ' and llms.txt' : ''; ?> from the current entities.</span>
 		</form>
 
 		<?php $this->render_backups(); ?>
@@ -339,9 +353,9 @@ class BL_EntityMap_Admin {
 					<td><input type="hidden" name="bl_em_enable_json" value="0"><label><input type="checkbox" name="bl_em_enable_json" value="1" <?php echo $chk( 'bl_em_enable_json' ); ?>> Serve <code>/entitymap.json</code> and <code>/entitymap.html</code></label>
 					<p class="description">A curated, portable catalogue of your entities that you control.</p></td></tr>
 
-				<tr><th scope="row">Add pointer to <code>llms.txt</code></th>
-					<td><input type="hidden" name="bl_em_enable_llms" value="0"><label><input type="checkbox" name="bl_em_enable_llms" value="1" <?php echo $chk( 'bl_em_enable_llms', '0' ); ?>> Maintain a &ldquo;Machine-readable index&rdquo; block in <code>llms.txt</code> pointing at the EntityMap</label>
-					<p class="description"><strong>Off by default.</strong> Writes only a marked block into your site&rsquo;s <code>llms.txt</code> &mdash; hand-authored content around it is preserved. Uses the Canonical base URL for the links.</p></td></tr>
+				<tr><th scope="row">Generate <code>llms.txt</code></th>
+					<td><input type="hidden" name="bl_em_enable_llms" value="0"><label><input type="checkbox" name="bl_em_enable_llms" value="1" <?php echo $chk( 'bl_em_enable_llms', '0' ); ?>> Generate <code>/llms.txt</code> from the EntityMap</label>
+					<p class="description"><strong>Off by default.</strong> Writes a complete <code>llms.txt</code> to the webroot on every change &mdash; a title/summary, a machine-readable index, and the entities grouped by kind and linked to their pages. Uses the Canonical base URL for links. <strong>This overwrites any existing <code>llms.txt</code></strong>, so enable it only if the EntityMap is your source for that file.</p></td></tr>
 
 				<tr><th scope="row"><label for="bl_em_backup_keep">Backups to keep</label></th>
 					<td><input name="bl_em_backup_keep" id="bl_em_backup_keep" type="number" min="1" max="100" class="small-text" value="<?php echo esc_attr( get_option( 'bl_em_backup_keep', BL_EntityMap_Backups::KEEP_DEFAULT ) ); ?>">
@@ -478,6 +492,11 @@ class BL_EntityMap_Admin {
 			$body = file_exists( $path ) ? file_get_contents( $path ) : $generator->get_html();
 			$type = 'text/html';
 			$dl   = 'entitymap.html';
+		} elseif ( $what === 'llms' ) {
+			$path = $generator->static_llms_path();
+			$body = file_exists( $path ) ? file_get_contents( $path ) : $generator->get_llms();
+			$type = 'text/plain';
+			$dl   = 'llms.txt';
 		} elseif ( $what === 'backup' ) {
 			$name = isset( $_GET['name'] ) ? wp_unslash( $_GET['name'] ) : '';
 			$body = BL_EntityMap_Backups::read( $name );
