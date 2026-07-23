@@ -28,6 +28,9 @@ class BL_EntityMap_Generator {
 		add_filter( 'query_vars', array( $this, 'query_vars' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_serve' ) );
 
+		// Sitewide machine-readable pointer to the map, in every page's <head>.
+		add_action( 'wp_head', array( $this, 'head_alternate_link' ) );
+
 		// Regenerate outputs whenever entities/settings change.
 		add_action( 'bl_entitymap_changed', array( $this, 'regenerate' ) );
 	}
@@ -41,6 +44,28 @@ class BL_EntityMap_Generator {
 		$vars[] = self::QUERY_VAR;
 		$vars[] = self::QUERY_VAR_HTML;
 		return $vars;
+	}
+
+	/**
+	 * Emit a sitewide <head> alternate link pointing at entitymap.json — the
+	 * cleanest machine-readable "the map exists, here it is" signal for AI systems
+	 * and crawlers. Uses the canonical base URL so the href is stable across hosts.
+	 * Suppressed when publishing is off, and on the map's own endpoints (which
+	 * carry their own links).
+	 */
+	public function head_alternate_link() {
+		if ( get_option( 'bl_em_enable_json', '1' ) !== '1' ) {
+			return;
+		}
+		if ( get_query_var( self::QUERY_VAR ) || get_query_var( self::QUERY_VAR_HTML ) ) {
+			return;
+		}
+
+		printf(
+			'<link rel="alternate" type="application/json" href="%s" title="%s" />' . "\n",
+			esc_url( BL_EntityMap_Store::base_url() . '/entitymap.json' ),
+			esc_attr( get_option( 'bl_em_publisher_name', 'BrightLocal' ) . ' EntityMap' )
+		);
 	}
 
 	/** Absolute path to the static JSON file in the Bedrock webroot. */
@@ -62,7 +87,9 @@ class BL_EntityMap_Generator {
 	public function get_document() {
 		$publisher = array(
 			'name' => get_option( 'bl_em_publisher_name', 'BrightLocal' ),
-			'url'  => get_option( 'bl_em_publisher_url', home_url( '/' ) ),
+			// Fall back to the canonical base URL (not the generating host) so the
+			// published files stay environment-independent even if left unset.
+			'url'  => get_option( 'bl_em_publisher_url', BL_EntityMap_Store::base_url() . '/' ),
 		);
 		$pub_same = get_option( 'bl_em_publisher_sameas', '' );
 		if ( $pub_same !== '' ) {
@@ -109,7 +136,14 @@ class BL_EntityMap_Generator {
 
 		$entities = isset( $doc['entities'] ) ? $doc['entities'] : array();
 		$pub_name = isset( $doc['publisher']['name'] ) ? $doc['publisher']['name'] : 'Publisher';
-		$pub_url  = isset( $doc['publisher']['url'] ) ? $doc['publisher']['url'] : home_url( '/' );
+		$pub_url  = isset( $doc['publisher']['url'] ) ? $doc['publisher']['url'] : BL_EntityMap_Store::base_url() . '/';
+
+		// Canonical base for absolute self-URLs. Uses the pinned Canonical base URL
+		// (bl_em_base_url) when set, so the file is environment-independent — a file
+		// regenerated on staging still emits production URLs, not the staging host.
+		$base      = BL_EntityMap_Store::base_url();
+		$html_url  = $base . '/entitymap.html';
+		$json_url  = $base . '/entitymap.json';
 
 		// Root-relative link so it resolves on any host.
 		$json_link = '/entitymap.json';
@@ -134,7 +168,7 @@ class BL_EntityMap_Generator {
 			'@context'     => 'https://schema.org',
 			'@type'        => 'WebPage',
 			'name'         => $pub_name . ' EntityMap',
-			'url'          => home_url( '/entitymap.html' ),
+			'url'          => $html_url,
 			'publisher'    => array( '@type' => 'Organization', 'name' => $pub_name, 'url' => $pub_url ),
 			'dateModified' => isset( $doc['generated'] ) ? $doc['generated'] : '',
 			'hasPart'      => $has_part,
@@ -154,6 +188,8 @@ class BL_EntityMap_Generator {
 <title><?php echo esc_html( $pub_name ); ?> &mdash; EntityMap</title>
 <meta name="description" content="<?php echo esc_attr( 'A structured, entity-first index of what ' . $pub_name . ' knows, published per the EntityMap open standard for AI systems and retrieval pipelines.' ); ?>">
 <meta name="robots" content="index, follow">
+<link rel="canonical" href="<?php echo esc_url( $html_url ); ?>">
+<link rel="alternate" type="application/json" href="<?php echo esc_url( $json_url ); ?>" title="<?php echo esc_attr( $pub_name . ' EntityMap' ); ?>">
 <script type="application/ld+json">
 <?php echo $ld_json; // phpcs:ignore WordPress.Security.EscapeOutput ?>
 

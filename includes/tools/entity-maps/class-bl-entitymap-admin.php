@@ -320,7 +320,7 @@ class BL_EntityMap_Admin {
 				<tr><th scope="row"><label for="bl_em_base_url">Canonical base URL</label></th>
 					<td>
 						<input name="bl_em_base_url" id="bl_em_base_url" type="url" class="regular-text" value="<?php echo $val( 'bl_em_base_url' ); ?>" placeholder="<?php echo esc_attr( home_url() ); ?>">
-						<p class="description">Used for schema <code>@id</code> references. <strong>Leave blank to use this site automatically</strong> (<?php echo esc_html( home_url() ); ?>). Per-page matching is host-agnostic and always works on any server regardless of this value.</p>
+						<p class="description">Used for schema <code>@id</code> references <strong>and for the absolute URLs baked into <code>entitymap.html</code> / <code>entitymap.json</code></strong> (canonical link, JSON-LD, alternate links). <strong>Set this to your production URL</strong> so files regenerated on staging still emit production URLs. Leave blank to use this site automatically (<?php echo esc_html( home_url() ); ?>). Per-page matching is host-agnostic regardless of this value.</p>
 					</td></tr>
 				<tr><th scope="row"><label for="bl_em_version">Spec version</label></th>
 					<td><input name="bl_em_version" id="bl_em_version" type="text" class="small-text" value="<?php echo $val( 'bl_em_version', '1.0' ); ?>"></td></tr>
