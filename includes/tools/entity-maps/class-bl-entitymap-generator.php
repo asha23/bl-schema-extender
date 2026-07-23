@@ -306,6 +306,7 @@ class BL_EntityMap_Generator {
 		}
 
 		$this->write_static_files( $json, $this->get_html( $doc ) );
+		$this->write_llms();
 	}
 
 	/**
@@ -335,6 +336,87 @@ class BL_EntityMap_Generator {
 	/** Back-compat: write only the JSON file. */
 	public function write_static_file( $json ) {
 		return $this->write_static_files( $json, $this->get_html() );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * llms.txt — a managed pointer block spliced into the site's llms.txt.
+	 *
+	 * The plugin owns ONLY the content between its markers; any hand-authored
+	 * llms.txt content around them is preserved. If the file has no markers the
+	 * block is appended; if there is no file, a minimal one is created.
+	 * ------------------------------------------------------------------- */
+
+	const LLMS_BEGIN = '<!-- BEGIN BL AI Tools: EntityMap (auto-generated — do not edit between these markers) -->';
+	const LLMS_END   = '<!-- END BL AI Tools: EntityMap -->';
+
+	/** Absolute path to the site's llms.txt (webroot). Filterable. */
+	public function static_llms_path() {
+		$path = trailingslashit( dirname( ABSPATH ) ) . 'llms.txt';
+		return apply_filters( 'bl_entitymap_llms_path', $path );
+	}
+
+	/**
+	 * The managed block (markers included). Uses the canonical base URL so the
+	 * links are environment-independent, like the rest of the generated output.
+	 */
+	public function llms_block() {
+		$base      = BL_EntityMap_Store::base_url();
+		$publisher = get_option( 'bl_em_publisher_name', 'BrightLocal' );
+
+		$lines   = array();
+		$lines[] = self::LLMS_BEGIN;
+		$lines[] = '';
+		$lines[] = '## Machine-readable index';
+		$lines[] = '';
+		$lines[] = '- [' . $publisher . ' EntityMap (HTML)](' . $base . '/entitymap.html) — entity-first index of what ' . $publisher . ' knows, for AI systems and retrieval pipelines';
+		$lines[] = '- [' . $publisher . ' EntityMap (JSON)](' . $base . '/entitymap.json) — machine-readable source';
+		$lines[] = '';
+		$lines[] = self::LLMS_END;
+
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Splice the managed block into llms.txt, preserving everything else.
+	 * Gated by the "Add EntityMap pointer to llms.txt" setting (off by default).
+	 *
+	 * @return bool True on a successful write.
+	 */
+	public function write_llms() {
+		if ( get_option( 'bl_em_enable_llms', '0' ) !== '1' ) {
+			return false;
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+
+		global $wp_filesystem;
+		if ( ! WP_Filesystem() ) {
+			update_option( 'bl_em_llms_ok', '0' );
+			return false;
+		}
+
+		$path    = $this->static_llms_path();
+		$block   = $this->llms_block();
+		$current = $wp_filesystem->exists( $path ) ? (string) $wp_filesystem->get_contents( $path ) : '';
+
+		$begin = strpos( $current, self::LLMS_BEGIN );
+		$end   = strpos( $current, self::LLMS_END );
+
+		if ( $begin !== false && $end !== false && $end > $begin ) {
+			// Replace the existing managed region in place (markers included).
+			$end_pos  = $end + strlen( self::LLMS_END );
+			$contents = substr_replace( $current, $block, $begin, $end_pos - $begin );
+		} elseif ( trim( $current ) !== '' ) {
+			// File exists but has no markers yet — append the block.
+			$contents = rtrim( $current, "\n" ) . "\n\n" . $block . "\n";
+		} else {
+			// No file — create a minimal llms.txt around the block.
+			$contents = '# ' . get_option( 'bl_em_publisher_name', 'BrightLocal' ) . "\n\n" . $block . "\n";
+		}
+
+		$ok = $wp_filesystem->put_contents( $path, $contents, FS_CHMOD_FILE );
+		update_option( 'bl_em_llms_ok', $ok ? '1' : '0' );
+		return (bool) $ok;
 	}
 
 	/* ---------------------------------------------------------------------

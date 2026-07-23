@@ -38,13 +38,18 @@ function bl_ai_uninstall_cleanup() {
 		'bl_em_verification',
 		'bl_em_profile',
 		'bl_em_enable_json',
+		'bl_em_enable_llms',
 		'bl_em_enable_schema',
 		'bl_em_enable_org',
 		'bl_em_enable_perpage',
 		'bl_em_static_ok',
+		'bl_em_llms_ok',
 		'bl_em_backup_keep',
 		'bl_em_entity_seq',
 	);
+
+	// Note: llms.txt is intentionally NOT deleted here — it is largely
+	// hand-authored, and the plugin only ever owned a marked block within it.
 	foreach ( $options as $option ) {
 		delete_option( $option );
 	}

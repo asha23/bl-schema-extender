@@ -35,6 +35,7 @@ class BL_EntityMap_Admin {
 		'bl_em_verification'     => 'text',
 		'bl_em_profile'          => 'text',
 		'bl_em_enable_json'      => 'bool',
+		'bl_em_enable_llms'      => 'bool',
 		'bl_em_enable_schema'    => 'bool',
 		'bl_em_enable_org'       => 'bool',
 		'bl_em_enable_perpage'   => 'bool',
@@ -337,6 +338,10 @@ class BL_EntityMap_Admin {
 				<tr><th scope="row">Publish EntityMap files</th>
 					<td><input type="hidden" name="bl_em_enable_json" value="0"><label><input type="checkbox" name="bl_em_enable_json" value="1" <?php echo $chk( 'bl_em_enable_json' ); ?>> Serve <code>/entitymap.json</code> and <code>/entitymap.html</code></label>
 					<p class="description">A curated, portable catalogue of your entities that you control.</p></td></tr>
+
+				<tr><th scope="row">Add pointer to <code>llms.txt</code></th>
+					<td><input type="hidden" name="bl_em_enable_llms" value="0"><label><input type="checkbox" name="bl_em_enable_llms" value="1" <?php echo $chk( 'bl_em_enable_llms', '0' ); ?>> Maintain a &ldquo;Machine-readable index&rdquo; block in <code>llms.txt</code> pointing at the EntityMap</label>
+					<p class="description"><strong>Off by default.</strong> Writes only a marked block into your site&rsquo;s <code>llms.txt</code> &mdash; hand-authored content around it is preserved. Uses the Canonical base URL for the links.</p></td></tr>
 
 				<tr><th scope="row"><label for="bl_em_backup_keep">Backups to keep</label></th>
 					<td><input name="bl_em_backup_keep" id="bl_em_backup_keep" type="number" min="1" max="100" class="small-text" value="<?php echo esc_attr( get_option( 'bl_em_backup_keep', BL_EntityMap_Backups::KEEP_DEFAULT ) ); ?>">
