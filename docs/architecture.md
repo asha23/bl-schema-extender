@@ -134,3 +134,12 @@ files* toggle (`bl_em_enable_json`) is off.
 | `bl_entitymap_llms_path` | filter | Override the static `llms.txt` file path. |
 | `bl_em_entity_types` | filter | Extend the recognised entity types (built-ins + Settings additions are passed in). |
 | `bl_em_predicates` | filter | Extend the recognised relation predicates (built-ins + Settings additions are passed in). |
+
+## Second tool: BrightLocal MCP
+
+The plugin now registers a second `BL_AI_Tool` module — **BrightLocal MCP**
+(`BL_AI_Tool_MCP`, in `includes/tools/mcp/`) — exposing published content to AI
+assistants over the Model Context Protocol via the WordPress Abilities API + MCP
+Adapter. It's self-contained and slots into the same registry
+(`bl_ai_registry()`) and shared menu. Full detail: [mcp.md](mcp.md). Its filters:
+`bl_mcp_capability`, `bl_mcp_searchable_types`, `bl_mcp_max_content_chars`.

@@ -4,6 +4,14 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.25.0
+- New tool: **BrightLocal MCP** — a dedicated, authenticated Model Context
+  Protocol server (`/wp-json/brightlocal/mcp`) that lets AI assistants search
+  (`search_content`) and read (`get_content`) BrightLocal's published content.
+  Built on the WordPress Abilities API + MCP Adapter; read-only, published
+  content only, Application Password auth. Feature-level dependency on the MCP
+  Adapter plugin (degrades gracefully when absent). See `docs/mcp.md`.
+
 ## 2.24.0
 - Brought generated `llms.txt` in line with the llms.txt spec: H1 is now the
   first line (provenance moved to a trailing comment), list items use the

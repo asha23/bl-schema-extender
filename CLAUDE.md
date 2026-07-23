@@ -1,6 +1,9 @@
 # BrightLocal - AI Tools
 
-WordPress plugin (`bl-ai-tools`). A modular host for AI-facing tools; currently one tool, **Entity Maps**, which curates an EntityMap in wp-admin (the **Manage Entities** screen) as the single source of truth and publishes it as `/entitymap.json`, a human-readable `/entitymap.html`, and a generated `/llms.txt`, plus an XML sitemap entry via Yoast. An optional Yoast Schema.org integration is included but **currently hidden** (`BL_EntityMap_Schema::FEATURE_ENABLED = false`).
+WordPress plugin (`bl-ai-tools`). A modular host for AI-facing tools. Two tools today:
+
+- **Entity Maps** — curates an EntityMap in wp-admin (the **Manage Entities** screen) as the single source of truth and publishes it as `/entitymap.json`, a human-readable `/entitymap.html`, and a generated `/llms.txt`, plus an XML sitemap entry via Yoast. An optional Yoast Schema.org integration is included but **currently hidden** (`BL_EntityMap_Schema::FEATURE_ENABLED = false`).
+- **BrightLocal MCP** — a dedicated Model Context Protocol server (`/wp-json/brightlocal/mcp`) exposing published content to AI assistants (`search_content` / `get_content`), built on the WordPress Abilities API + MCP Adapter. See `docs/mcp.md`.
 
 - **Slug / folder / repo:** `bl-ai-tools`
 - **Main file:** `bl-ai-tools.php`
@@ -31,6 +34,11 @@ includes/
     class-bl-entitymap-backups.php    Timestamped entitymap.json snapshots; restore
     class-bl-entitymap-admin.php      The tabbed hub: Manage Entities · Files · Import · Settings · Help
     assets/manage.{js,css}            Manage Entities screen assets (vanilla JS, no build)
+  tools/mcp/
+    class-bl-ai-tool-mcp.php          BrightLocal MCP tool module
+    class-bl-mcp-abilities.php        Registers the search_content / get_content abilities (Abilities API)
+    class-bl-mcp-server.php           Creates the dedicated MCP server via the MCP Adapter (HttpTransport)
+    class-bl-mcp-admin.php            BrightLocal MCP status / endpoint / auth screen
 assets/icon.svg                       Top-level menu icon
 docs/                                 help.md (rendered as the Help tab), CHANGELOG.md, admin-guide.md, architecture.md, data-model.md, schema-integration.md, bugs/, features/
 uninstall.php                         Full data cleanup on plugin delete
@@ -54,4 +62,5 @@ composer.json                         type: wordpress-plugin
 
 - Renaming the plugin folder or main file deactivates the plugin in WordPress — it must be reactivated, which re-flushes rewrite rules so `/entitymap.json` resolves.
 - **Yoast SEO is a feature-level dependency, not plugin-wide.** Two features need it: the XML sitemap (`BL_EntityMap_Sitemap` — registers `/entitymap-sitemap.xml`) and the (currently hidden) schema mapping (`BL_EntityMap_Schema`). Both no-op gracefully when Yoast is absent — the core (Manage Entities, `entitymap.json`/`.html`, `llms.txt`) works without it. Do **not** add a plugin-wide `Requires Plugins` header; gate at runtime and signpost in the UI instead.
+- **The MCP Adapter plugin + WP 6.9 (Abilities API) are a feature-level dependency of BrightLocal MCP** — same pattern: `BL_MCP_Server::available()` gates it, no fatal when absent, admin screen signposts. Everything else works without them.
 - No build step and no automated test suite — this is plain PHP loaded directly by WordPress.
