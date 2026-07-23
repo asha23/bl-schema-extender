@@ -24,6 +24,7 @@ class BL_AI_Markdown {
 		$out   = '';
 		$para  = array();
 		$list  = null; // 'ul' | 'ol' | null
+		$item  = null; // current list-item text buffer (accumulates wrapped lines)
 
 		$flush_para = function () use ( &$para, &$out ) {
 			if ( $para ) {
@@ -31,7 +32,18 @@ class BL_AI_Markdown {
 				$para = array();
 			}
 		};
-		$close_list = function () use ( &$list, &$out ) {
+		// Emit the buffered list item, if any.
+		$flush_item = function () use ( &$item, &$out ) {
+			if ( $item !== null ) {
+				$out .= '<li>' . self::inline( trim( $item ) ) . "</li>\n";
+				$item = null;
+			}
+		};
+		$close_list = function () use ( &$list, &$item, &$out ) {
+			if ( $item !== null ) {
+				$out .= '<li>' . self::inline( trim( $item ) ) . "</li>\n";
+				$item = null;
+			}
 			if ( $list ) {
 				$out  .= '</' . $list . ">\n";
 				$list  = null;
@@ -76,8 +88,10 @@ class BL_AI_Markdown {
 					$close_list();
 					$out  .= "<ul>\n";
 					$list  = 'ul';
+				} else {
+					$flush_item(); // close the previous item before starting a new one
 				}
-				$out .= '<li>' . self::inline( $m[1] ) . "</li>\n";
+				$item = $m[1];
 				continue;
 			}
 
@@ -88,13 +102,21 @@ class BL_AI_Markdown {
 					$close_list();
 					$out  .= "<ol>\n";
 					$list  = 'ol';
+				} else {
+					$flush_item();
 				}
-				$out .= '<li>' . self::inline( $m[1] ) . "</li>\n";
+				$item = $m[1];
 				continue;
 			}
 
-			// Otherwise: paragraph text (a list can't continue on a plain line).
-			$close_list();
+			// A non-blank line inside a list continues the current item (soft-wrap /
+			// lazy continuation) — this is what keeps multi-line bullets on one line.
+			if ( $list !== null && $item !== null ) {
+				$item .= ' ' . trim( $line );
+				continue;
+			}
+
+			// Otherwise: paragraph text (consecutive lines accumulate).
 			$para[] = trim( $line );
 		}
 
@@ -105,8 +127,8 @@ class BL_AI_Markdown {
 	}
 
 	/**
-	 * Inline formatting. Text is HTML-escaped first, then links / bold / code are
-	 * applied, so no raw markup from the source can leak through.
+	 * Inline formatting. Text is HTML-escaped first, then links / bold / italic /
+	 * code are applied, so no raw markup from the source can leak through.
 	 */
 	private static function inline( $text ) {
 		$text = esc_html( $text );
@@ -120,8 +142,11 @@ class BL_AI_Markdown {
 			$text
 		);
 
-		// **bold**
+		// **bold** (before single-asterisk italic)
 		$text = preg_replace( '/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $text );
+
+		// *italic*
+		$text = preg_replace( '/\*([^*\n]+)\*/', '<em>$1</em>', $text );
 
 		// `code`
 		$text = preg_replace( '/`([^`]+)`/', '<code>$1</code>', $text );

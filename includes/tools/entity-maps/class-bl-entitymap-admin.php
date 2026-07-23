@@ -663,19 +663,35 @@ class BL_EntityMap_Admin {
 			'{{url:sitemap}}'  => home_url( '/entitymap-sitemap.xml' ),
 			'{{changelog:5}}'  => $this->changelog_excerpt( 5 ),
 		) );
+		// Render each top-level "## " section as its own WordPress admin card.
+		$sections = preg_split( '/\n(?=## )/', "\n" . trim( $md ) );
 		?>
 		<style>
-			.bl-md { max-width: 860px; }
-			.bl-md h2 { margin: 1.6em 0 .4em; padding-top: .6em; border-top: 1px solid #dcdcde; font-size: 1.3em; }
-			.bl-md h2:first-of-type { border-top: 0; padding-top: 0; }
-			.bl-md h3 { margin: 1.2em 0 .3em; font-size: 1.05em; }
-			.bl-md li { margin: .3em 0; }
-			.bl-md code { background: #f0f0f1; padding: 1px 5px; border-radius: 3px; }
-			.bl-md pre.bl-md-pre { background: #f6f7f7; border: 1px solid #dcdcde; border-radius: 4px; padding: 12px; overflow-x: auto; }
-			.bl-md pre.bl-md-pre code { background: none; padding: 0; }
+			.bl-md { max-width: 900px; }
+			.bl-md .card.bl-md-card { max-width: 100%; padding: 4px 24px 20px; margin: 0 0 16px; }
+			.bl-md-card > h2:first-child { margin-top: .8em; font-size: 1.3em; }
+			.bl-md-card h2 { font-size: 1.3em; margin: 1.2em 0 .35em; }
+			.bl-md-card h3 { font-size: 1.02em; margin: 1.3em 0 .25em; color: #1d2327; }
+			.bl-md-card p, .bl-md-card li { font-size: 13.5px; line-height: 1.6; }
+			.bl-md-card ul, .bl-md-card ol { margin: .4em 0 .9em 1.5em; }
+			.bl-md-card ul { list-style: disc; }
+			.bl-md-card ol { list-style: decimal; }
+			.bl-md-card li { margin: .3em 0; }
+			.bl-md-card code { background: #f0f0f1; padding: 1px 6px; border-radius: 3px; font-size: .9em; }
+			.bl-md-card pre.bl-md-pre { background: #f6f7f7; border: 1px solid #dcdcde; border-radius: 4px; padding: 12px 14px; overflow-x: auto; }
+			.bl-md-card pre.bl-md-pre code { background: none; padding: 0; }
+			.bl-md-card a { text-decoration: none; }
+			.bl-md-card a:hover { text-decoration: underline; }
 		</style>
 		<div class="bl-md">
-			<?php echo BL_AI_Markdown::to_html( $md ); // phpcs:ignore WordPress.Security.EscapeOutput — renderer escapes text and emits only whitelisted tags ?>
+			<?php foreach ( $sections as $section ) :
+				$section = trim( $section );
+				if ( $section === '' ) {
+					continue;
+				}
+				// phpcs:ignore WordPress.Security.EscapeOutput — renderer escapes text and emits only whitelisted tags
+				echo '<div class="card bl-md-card">' . BL_AI_Markdown::to_html( $section ) . '</div>';
+			endforeach; ?>
 		</div>
 		<?php
 	}

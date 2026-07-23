@@ -4,6 +4,12 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.23.0
+- Help tab redesigned to use native WordPress admin **cards** per section, with
+  cleaner typography.
+- Fixed the Markdown renderer so wrapped/multi-line list items stay on one line
+  (the "Latest changes" list no longer breaks mid-sentence); added italics.
+
 ## 2.22.0
 - **`llms.txt` now has a dynamic fallback endpoint**, like `entitymap.json`/`.html`.
   Previously it was static-file-only, so it 404'd whenever the webroot wasn't
