@@ -59,7 +59,7 @@ class BL_AI_Tools_Registry {
 			self::MENU_SLUG,
 			array( $this, 'render_dashboard' ),
 			self::menu_icon(),
-			58
+			76 // just below Tools (75); Settings is 80.
 		);
 
 		// The first submenu of a top-level menu duplicates it; relabel to "Dashboard".
