@@ -261,10 +261,16 @@ class BL_EntityMap_Admin {
 		$backups = BL_EntityMap_Backups::all();
 		?>
 		<h2 style="margin-top:2em;">Backups &amp; restore</h2>
-		<p class="description" style="max-width:720px;">A snapshot of <code>entitymap.json</code> is saved automatically before every import or restore, so you can always undo. <strong>Restore</strong> re-imports a snapshot into the database and regenerates the files. The most recent <?php echo (int) BL_EntityMap_Backups::keep(); ?> are kept.</p>
+		<p class="description" style="max-width:760px;">A snapshot of the map is saved automatically <strong>before every change</strong> &mdash; each entity save/delete, import, and restore &mdash; and you can take one anytime with the button below. <strong>Restore</strong> re-imports a snapshot into the database and regenerates the files, so it&rsquo;s a true undo of the whole map (the current state is snapshotted first, so a restore is itself reversible). The most recent <?php echo (int) BL_EntityMap_Backups::keep(); ?> are kept.</p>
+
+		<form method="post" style="margin:0 0 1.25em;">
+			<?php wp_nonce_field( 'bl_em_tool', 'bl_em_tool_nonce' ); ?>
+			<button class="button" name="bl_em_tool" value="backup">Create backup now</button>
+			<span class="description" style="margin-left:8px;">Save the current map as a restore point.</span>
+		</form>
 
 		<?php if ( empty( $backups ) ) : ?>
-			<p><em>No backups yet. One is created the first time you import or restore.</em></p>
+			<p><em>No backups yet &mdash; use &ldquo;Create backup now&rdquo;, or one is saved automatically on your next change.</em></p>
 			<?php return; ?>
 		<?php endif; ?>
 
@@ -460,6 +466,13 @@ class BL_EntityMap_Admin {
 				$this->notice( 'error', $result->get_error_message() );
 			} else {
 				$this->notice( 'success', sprintf( 'Restored %s: %d created, %d updated, %d moved to Trash. Files regenerated.', $name, $result['created'], $result['updated'], $result['removed'] ) );
+			}
+		} elseif ( $tool === 'backup' ) {
+			$name = BL_EntityMap_Backups::archive( 'manual' );
+			if ( $name ) {
+				$this->notice( 'success', 'Backup created: ' . $name . '. Restore it any time below.' );
+			} else {
+				$this->notice( 'warning', 'Nothing to back up yet — add an entity first.' );
 			}
 		} elseif ( $tool === 'delete_backup' ) {
 			$name = isset( $_POST['bl_em_backup'] ) ? sanitize_text_field( wp_unslash( $_POST['bl_em_backup'] ) ) : '';

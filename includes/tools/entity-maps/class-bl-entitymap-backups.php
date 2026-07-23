@@ -42,14 +42,23 @@ class BL_EntityMap_Backups {
 	}
 
 	/**
-	 * Snapshot the current entitymap.json before it is overwritten.
+	 * Snapshot the current map (from the database) as a restore point.
 	 *
-	 * @param string $reason Short label stored alongside the backup (e.g. "import").
+	 * Built from the live document via BL_EntityMap_Generator::snapshot_json(),
+	 * NOT by copying the published file — so a backup is always created even when
+	 * the webroot isn't writable (files served dynamically) or no static file has
+	 * been generated yet. Called before every change (edit, delete, import,
+	 * restore) and on demand from the Files tab.
+	 *
+	 * @param string $reason Short label stored alongside the backup (e.g. "edit").
 	 * @return string The backup's basename, or '' if there was nothing to back up.
 	 */
 	public static function archive( $reason = '' ) {
-		$src = ( new BL_EntityMap_Generator() )->static_path();
-		if ( ! file_exists( $src ) ) {
+		$json = BL_EntityMap_Generator::snapshot_json();
+		$doc  = is_string( $json ) ? json_decode( $json, true ) : null;
+
+		// Nothing meaningful to snapshot (empty/never-populated map).
+		if ( empty( $doc['entities'] ) ) {
 			return '';
 		}
 
@@ -64,7 +73,7 @@ class BL_EntityMap_Backups {
 			$dest = trailingslashit( self::dir() ) . $name;
 		}
 
-		if ( ! @copy( $src, $dest ) ) { // phpcs:ignore
+		if ( false === @file_put_contents( $dest, $json ) ) { // phpcs:ignore
 			return '';
 		}
 

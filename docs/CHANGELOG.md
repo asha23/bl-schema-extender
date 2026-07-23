@@ -4,6 +4,18 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.21.0
+- `entitymap.html` now shows each evidence chunk's **content type** and
+  **audience** as small labels, so the human page reflects those fields (they
+  were only in `entitymap.json` before).
+
+## 2.20.0
+- **Reliable backups/restore.** Snapshots are now taken from the database (the
+  live document), not by copying the published file — so a restore point is
+  always created even when the webroot isn't writable or no static file exists
+  (previously backups silently produced nothing in that case). Added a **Create
+  backup now** button on the Files tab.
+
 ## 2.19.0
 - Help doc now shows a **Latest changes** section pulled live from this changelog
   (top 5 versions), so it stays current automatically.

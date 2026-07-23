@@ -61,9 +61,13 @@ private, listing-guarded directory: `uploads/bl-ai-tools/entitymap-backups/`
 (provisioned on activation; named `entitymap-YYYYMMDD-HHMMSS.json`, with an
 optional `.meta` reason sidecar).
 
-- A snapshot is taken **automatically before every change** — each Manage Entities
-  save/delete, a webroot import, an uploaded "verify & import", and before a
-  restore.
+- Snapshots are built **from the database** (the live document via
+  `BL_EntityMap_Generator::snapshot_json()`), **not** by copying the published
+  file — so a restore point is always created even when the webroot isn't
+  writable / no static file exists. (Only skipped when the map is empty.)
+- Taken **automatically before every change** — each Manage Entities save/delete,
+  a webroot import, an uploaded "verify & import", and before a restore — plus a
+  **Create backup now** button on the Files tab for on-demand restore points.
 - The Files tab lists snapshots (newest first) with **Restore**, **Download**,
   **Delete**.
 - **Restore** re-imports that snapshot (full sync) and regenerates — a true undo of

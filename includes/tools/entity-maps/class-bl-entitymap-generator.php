@@ -84,7 +84,7 @@ class BL_EntityMap_Generator {
 	 * Document assembly.
 	 * ------------------------------------------------------------------- */
 
-	public function get_document() {
+	public static function get_document() {
 		$publisher = array(
 			'name' => get_option( 'bl_em_publisher_name', 'BrightLocal' ),
 			// Fall back to the canonical base URL (not the generating host) so the
@@ -116,13 +116,21 @@ class BL_EntityMap_Generator {
 			}
 		}
 
-		$json = wp_json_encode(
-			$this->get_document(),
-			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-		);
+		$json = self::snapshot_json();
 
 		set_transient( self::CACHE_KEY, $json, DAY_IN_SECONDS );
 		return $json;
+	}
+
+	/**
+	 * Uncached JSON of the current document, built straight from the DB with no
+	 * caching or side effects — for backups/snapshots. Safe to call statically.
+	 */
+	public static function snapshot_json() {
+		return wp_json_encode(
+			self::get_document(),
+			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+		);
 	}
 
 	/* ---------------------------------------------------------------------
@@ -131,7 +139,7 @@ class BL_EntityMap_Generator {
 
 	public function get_html( $doc = null ) {
 		if ( $doc === null ) {
-			$doc = $this->get_document();
+			$doc = self::get_document();
 		}
 
 		$entities = isset( $doc['entities'] ) ? $doc['entities'] : array();
@@ -239,6 +247,8 @@ class BL_EntityMap_Generator {
   blockquote.chunk { margin: 0 0 0.9rem; padding: 0.6rem 1rem; background: #fafafa; border-left: 3px solid #0fd03b; }
   blockquote.chunk p { margin: 0 0 0.35rem; font-style: italic; }
   blockquote.chunk cite { font-size: 0.8rem; color: #777; font-style: normal; }
+  .chunk-meta { font-style: normal; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em; color: #666; margin: 0 0 0.4rem; }
+  .chunk-meta span { background: #eef0f2; border-radius: 3px; padding: 1px 7px; margin-right: 0.3rem; }
   ul.relations { list-style: none; padding: 0; }
   ul.relations li { padding: 0.35rem 0; border-bottom: 1px dotted #eee; font-size: 0.92rem; }
   .pred { font-family: monospace; background: #f0f0f0; padding: 1px 6px; border-radius: 3px; font-size: 0.82rem; }
@@ -281,6 +291,10 @@ class BL_EntityMap_Generator {
   <h3>Evidence</h3>
 		<?php foreach ( $e['hasChunks'] as $c ) : ?>
   <blockquote class="chunk">
+			<?php $chunk_meta = array_filter( array( isset( $c['contentType'] ) ? $c['contentType'] : '', isset( $c['audienceType'] ) ? $c['audienceType'] : '' ) ); ?>
+			<?php if ( $chunk_meta ) : ?>
+	<p class="chunk-meta"><?php foreach ( $chunk_meta as $meta ) : ?><span><?php echo esc_html( $meta ); ?></span><?php endforeach; ?></p>
+			<?php endif; ?>
 	<p>&ldquo;<?php echo esc_html( $c['text'] ); ?>&rdquo;</p>
 			<?php if ( ! empty( $c['sourceUrl'] ) ) : ?>
 	<cite><a href="<?php echo esc_url( $c['sourceUrl'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( ! empty( $c['pageTitle'] ) ? $c['pageTitle'] : $c['sourceUrl'] ); ?></a><?php echo ! empty( $c['publisher'] ) ? ' &mdash; ' . esc_html( $c['publisher'] ) : ''; ?></cite>
@@ -320,7 +334,7 @@ class BL_EntityMap_Generator {
 		delete_transient( self::CACHE_KEY );
 
 		$entities = BL_EntityMap_Store::get_entities( true );
-		$doc      = $this->get_document();
+		$doc      = self::get_document();
 		$json     = $this->get_json( true );
 
 		// Safety: never overwrite existing maps with empty ones. This keeps a seed
