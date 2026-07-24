@@ -3,7 +3,7 @@
 * Plugin Name: BrightLocal - AI Tools
 * Plugin URI: https://brightlocal.com
 * Description: BrightLocal AI Tools — a modular collection of AI-related website tools. Entity Maps (entitymap.json / entitymap.html / llms.txt) and coming soon, BrightLocal MCP (a Model Context Protocol server for AI assistants).
-* Version: 2.27.0
+* Version: 2.27.1
 * Author: Ash Whiting for BrightLocal
 * Author URI: https://brightlocal.com
 * Text Domain: bl-ai-tools
