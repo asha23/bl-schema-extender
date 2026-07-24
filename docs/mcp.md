@@ -1,5 +1,11 @@
 # BrightLocal MCP
 
+> **Currently disabled.** The tool is code-complete but off via the kill-switch
+> `BL_AI_Tool_MCP::ENABLED` (`false`) — it isn't registered or booted, so there's
+> no menu, no abilities, no MCP server, and no `brightlocal` category registered
+> by this plugin. Only Entity Maps ships for now. Flip the constant to `true` to
+> deploy it; the rest of this document describes how it works when enabled.
+
 The second BL AI Tools module (`BL_AI_Tool_MCP`, label **BrightLocal MCP**). It
 exposes BrightLocal's published content to AI assistants over the
 [Model Context Protocol](https://modelcontextprotocol.io) so an LLM can search

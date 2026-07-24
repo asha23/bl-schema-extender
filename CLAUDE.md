@@ -3,7 +3,7 @@
 WordPress plugin (`bl-ai-tools`). A modular host for AI-facing tools. Two tools today:
 
 - **Entity Maps** — curates an EntityMap in wp-admin (the **Manage Entities** screen) as the single source of truth and publishes it as `/entitymap.json`, a human-readable `/entitymap.html`, and a generated `/llms.txt`, plus an XML sitemap entry via Yoast. An optional Yoast Schema.org integration is included but **currently hidden** (`BL_EntityMap_Schema::FEATURE_ENABLED = false`).
-- **BrightLocal MCP** — a dedicated Model Context Protocol server (`/wp-json/brightlocal/mcp`) exposing published content to AI assistants (`search_content` / `get_content`), built on the WordPress Abilities API + MCP Adapter. See `docs/mcp.md`.
+- **BrightLocal MCP** — a dedicated Model Context Protocol server (`/wp-json/brightlocal/mcp`) exposing content + EntityMap to AI assistants, built on the WordPress Abilities API + MCP Adapter. **Currently disabled** via a kill-switch (`BL_AI_Tool_MCP::ENABLED = false`) — code-complete but not registered; only Entity Maps ships. See `docs/mcp.md`.
 
 - **Slug / folder / repo:** `bl-ai-tools`
 - **Main file:** `bl-ai-tools.php`
