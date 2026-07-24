@@ -263,6 +263,12 @@ class BL_EntityMap_Admin {
 		<h2 style="margin-top:2em;">Backups &amp; restore</h2>
 		<p class="description" style="max-width:760px;">A snapshot of the map is saved automatically <strong>before every change</strong> &mdash; each entity save/delete, import, and restore &mdash; and you can take one anytime with the button below. <strong>Restore</strong> re-imports a snapshot into the database and regenerates the files, so it&rsquo;s a true undo of the whole map (the current state is snapshotted first, so a restore is itself reversible). The most recent <?php echo (int) BL_EntityMap_Backups::keep(); ?> are kept.</p>
 
+		<?php if ( get_option( 'bl_em_backup_ok' ) === '0' ) : ?>
+			<div class="notice notice-error inline" style="margin:0 0 1.25em;max-width:760px;">
+				<p><span class="dashicons dashicons-warning"></span> <strong>Backups can&rsquo;t be written.</strong> The last attempt failed &mdash; the directory <code><?php echo esc_html( BL_EntityMap_Backups::dir() ); ?></code> isn&rsquo;t writable, so restore points are <strong>not</strong> being saved. Fix the permissions on that <code>uploads</code> path (on some hosts the app filesystem is read-only outside <code>uploads</code>). Until then, changes are not undoable.</p>
+			</div>
+		<?php endif; ?>
+
 		<form method="post" style="margin:0 0 1.25em;">
 			<?php wp_nonce_field( 'bl_em_tool', 'bl_em_tool_nonce' ); ?>
 			<button class="button" name="bl_em_tool" value="backup">Create backup now</button>

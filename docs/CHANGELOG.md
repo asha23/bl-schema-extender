@@ -4,6 +4,13 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.27.2
+- Backups now record whether the write succeeded (`bl_em_backup_ok`) and the
+  Files tab shows a clear error when the backups directory isn't writable — so a
+  failed backup is visible instead of silent. (Fixes the "changes made but no
+  backups appear" confusion, which is a writable-directory / old-version issue,
+  not a logic bug.)
+
 ## 2.27.0
 - **BrightLocal MCP disabled for now** via a kill-switch (`BL_AI_Tool_MCP::ENABLED
   = false`). The tool is not registered/booted — no menu, no abilities, no MCP

@@ -57,25 +57,40 @@ class BL_EntityMap_Backups {
 		$json = BL_EntityMap_Generator::snapshot_json();
 		$doc  = is_string( $json ) ? json_decode( $json, true ) : null;
 
-		// Nothing meaningful to snapshot (empty/never-populated map).
+		// Nothing meaningful to snapshot (empty/never-populated map). Not a
+		// failure — leave the writable-status flag untouched.
 		if ( empty( $doc['entities'] ) ) {
+			return '';
+		}
+
+		$dir = self::dir();
+
+		// Record whether we can actually write backups, so the Files tab can warn
+		// instead of failing silently. (put_contents is @-suppressed because this
+		// runs during the save AJAX response — a raw PHP warning would corrupt the
+		// JSON — so we must capture the outcome ourselves.)
+		if ( ! is_dir( $dir ) || ! wp_is_writable( $dir ) ) {
+			update_option( 'bl_em_backup_ok', '0' );
 			return '';
 		}
 
 		$stamp = gmdate( 'Ymd-His' );
 		$name  = 'entitymap-' . $stamp . '.json';
-		$dest  = trailingslashit( self::dir() ) . $name;
+		$dest  = trailingslashit( $dir ) . $name;
 
 		// Avoid clobbering within the same second.
 		$i = 1;
 		while ( file_exists( $dest ) ) {
 			$name = 'entitymap-' . $stamp . '-' . ( ++$i ) . '.json';
-			$dest = trailingslashit( self::dir() ) . $name;
+			$dest = trailingslashit( $dir ) . $name;
 		}
 
 		if ( false === @file_put_contents( $dest, $json ) ) { // phpcs:ignore
+			update_option( 'bl_em_backup_ok', '0' );
 			return '';
 		}
+
+		update_option( 'bl_em_backup_ok', '1' );
 
 		if ( $reason !== '' ) {
 			@file_put_contents( $dest . '.meta', sanitize_text_field( $reason ) ); // phpcs:ignore
