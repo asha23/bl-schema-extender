@@ -19,6 +19,14 @@ require_once __DIR__ . '/class-bl-mcp-admin.php';
 
 class BL_AI_Tool_MCP extends BL_AI_Tool {
 
+	/**
+	 * Master kill-switch. While false, the tool is NOT registered or booted at all
+	 * — no menu, no abilities, no MCP server, and this plugin does not register the
+	 * shared `brightlocal` ability category. The code is retained; flip to true to
+	 * deploy it. Kept off for now so only the Entity Maps tool ships.
+	 */
+	const ENABLED = false;
+
 	const MENU_SLUG = 'bl-mcp';
 
 	/** @var BL_MCP_Admin */

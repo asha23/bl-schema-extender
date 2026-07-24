@@ -4,6 +4,19 @@ All notable changes to **BrightLocal – AI Tools** (`bl-ai-tools`). Versions tr
 the plugin header `Version:` / `BL_AI_VERSION` (kept in sync). Keep this current
 whenever behaviour changes.
 
+## 2.27.0
+- **BrightLocal MCP disabled for now** via a kill-switch (`BL_AI_Tool_MCP::ENABLED
+  = false`). The tool is not registered/booted — no menu, no abilities, no MCP
+  server, and this plugin no longer registers the shared `brightlocal` ability
+  category. Code retained; flip the constant to `true` to deploy it. Only the
+  Entity Maps tool ships for now.
+
+## 2.26.1
+- BrightLocal MCP: the `brightlocal` ability-category registration is now
+  idempotent (`wp_has_ability_category()` guard), so it's collision-proof if
+  another plugin (e.g. a shared mu-plugin) registers the same category —
+  regardless of load order.
+
 ## 2.26.0
 - BrightLocal MCP: added **`search_entities`** and **`get_entity`** tools that
   expose the curated EntityMap (products, services, concepts, research) over MCP

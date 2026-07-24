@@ -40,6 +40,13 @@ class BL_MCP_Abilities {
 		if ( ! function_exists( 'wp_register_ability_category' ) ) {
 			return;
 		}
+		// Idempotent: the 'brightlocal' category may also be registered by another
+		// plugin (e.g. a shared mu-plugin) that attaches its own abilities to it.
+		// Only register if it's not already there, so this is collision-proof
+		// regardless of plugin load / hook order.
+		if ( function_exists( 'wp_has_ability_category' ) && wp_has_ability_category( self::CATEGORY ) ) {
+			return;
+		}
 		wp_register_ability_category( self::CATEGORY, array(
 			'label'       => __( 'BrightLocal', 'bl-ai-tools' ),
 			'description' => __( 'BrightLocal content and knowledge for AI assistants.', 'bl-ai-tools' ),
